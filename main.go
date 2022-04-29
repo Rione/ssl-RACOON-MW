@@ -561,7 +561,6 @@ func RunServer(chserver chan bool, reportrate uint, ourteam int, goalpose int) {
 			Info:        OtherInfo,
 		}
 
-		fmt.Println(RacoonMWPacket)
 		Data, _ := proto.Marshal(RacoonMWPacket)
 
 		conn.Write([]byte(Data))
