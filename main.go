@@ -190,6 +190,11 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int) {
 				}
 				left_geo_goal_x = (lgtlp1x + lgtlp2x) * 0.5
 				left_geo_goal_y = (lgtlp1y + lgblp2y) * 0.5
+
+				//Invert
+				if goalpos == 1 {
+					left_geo_goal_x = left_geo_goal_x * -1
+				}
 			}
 
 			// Get Blue Robots
@@ -197,6 +202,9 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int) {
 			for _, robot := range packet.Detection.GetRobotsBlue() {
 				num_bluerobots++
 				bluerobots[robot.GetRobotId()] = robot
+				if goalpos == 1 {
+					*robot.X = *robot.X * -1
+				}
 			}
 
 			// Get Yellow Robots
@@ -204,6 +212,9 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int) {
 			for _, robot := range packet.Detection.GetRobotsYellow() {
 				num_yellowrobots++
 				yellowrobots[robot.GetRobotId()] = robot
+				if goalpos == 1 {
+					*robot.X = *robot.X * -1
+				}
 			}
 
 			// Get Most High Confidence ball
@@ -223,11 +234,13 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int) {
 						maxconfball = fball
 					}
 				}
+				if goalpos == 1 {
+					*maxconfball.X = *maxconfball.X * -1
+				}
 
 				ball = maxconfball
-			}
 
-			log.Println(ball.GetX())
+			}
 		}
 	}
 	chvision <- true
@@ -373,11 +386,19 @@ func Observer(chobserver chan bool, ourteam int, goalpos int) {
 	<-chobserver
 }
 
-func createRobotInfo(i int) *pb_gen.Robot_Infos {
+func createRobotInfo(i int, ourteam int) *pb_gen.Robot_Infos {
 	var robotid uint32 = bluerobots[i].GetRobotId()
 	var x float32 = bluerobots[i].GetX()
 	var y float32 = bluerobots[i].GetY()
 	var theta float32 = bluerobots[i].GetOrientation()
+
+	if ourteam == 1 {
+		robotid = yellowrobots[i].GetRobotId()
+		x = yellowrobots[i].GetX()
+		y = yellowrobots[i].GetY()
+		theta = yellowrobots[i].GetOrientation()
+	}
+
 	var batt float32 = 12.15
 	var online bool = true
 	pe := &pb_gen.Robot_Infos{
@@ -410,11 +431,19 @@ func addRobotInfoToRobotInfos(robotinfo [16]*pb_gen.Robot_Infos) []*pb_gen.Robot
 	return RobotInfos
 }
 
-func createEnemyInfo(i int) *pb_gen.Enemy_Infos {
+func createEnemyInfo(i int, ourteam int) *pb_gen.Enemy_Infos {
 	var robotid uint32 = yellowrobots[i].GetRobotId()
 	var x float32 = yellowrobots[i].GetX()
 	var y float32 = yellowrobots[i].GetY()
 	var theta float32 = yellowrobots[i].GetOrientation()
+
+	if ourteam == 1 {
+		robotid = bluerobots[i].GetRobotId()
+		x = bluerobots[i].GetX()
+		y = bluerobots[i].GetY()
+		theta = bluerobots[i].GetOrientation()
+	}
+
 	pe := &pb_gen.Enemy_Infos{
 		RobotId:         &robotid,
 		X:               &x,
@@ -488,7 +517,7 @@ func addEnemyInfoToEnemyInfos(enemyinfo [16]*pb_gen.Enemy_Infos) []*pb_gen.Enemy
 	return EnemyInfos
 }
 
-func RunServer(chserver chan bool, reportrate uint) {
+func RunServer(chserver chan bool, reportrate uint, ourteam int, goalpose int) {
 	ipv4 := "127.0.0.1"
 	port := "30011"
 	addr := ipv4 + ":" + port
@@ -505,14 +534,14 @@ func RunServer(chserver chan bool, reportrate uint) {
 
 		var robot_infos [16]*pb_gen.Robot_Infos
 		for _, robot := range bluerobots {
-			robot_infos[robot.GetRobotId()] = createRobotInfo(int(robot.GetRobotId()))
+			robot_infos[robot.GetRobotId()] = createRobotInfo(int(robot.GetRobotId()), ourteam)
 		}
 
 		RobotInfos := addRobotInfoToRobotInfos(robot_infos)
 
 		var enemy_infos [16]*pb_gen.Enemy_Infos
 		for _, enemy := range yellowrobots {
-			enemy_infos[enemy.GetRobotId()] = createEnemyInfo(int(enemy.GetRobotId()))
+			enemy_infos[enemy.GetRobotId()] = createEnemyInfo(int(enemy.GetRobotId()), ourteam)
 		}
 
 		EnemyInfos := addEnemyInfoToEnemyInfos(enemy_infos)
@@ -532,6 +561,7 @@ func RunServer(chserver chan bool, reportrate uint) {
 			Info:        OtherInfo,
 		}
 
+		fmt.Println(RacoonMWPacket)
 		Data, _ := proto.Marshal(RacoonMWPacket)
 
 		conn.Write([]byte(Data))
@@ -581,7 +611,7 @@ func main() {
 	chref := make(chan bool)
 
 	go Update(chupdate)
-	go RunServer(chserver, *reportrate)
+	go RunServer(chserver, *reportrate, ourteam_n, goalpos_n)
 	go VisionReceive(chvision, *visionport, ourteam_n, goalpos_n)
 	go Observer(chobserver, ourteam_n, goalpos_n)
 	go RefereeReceive(chref)
