@@ -127,7 +127,7 @@ func RefereeReceive(chref chan bool) {
 
 func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int) {
 	maxcameras = 0
-
+	framecounter := 0
 	serverAddr := &net.UDPAddr{
 		IP:   net.ParseIP("224.5.23.2"),
 		Port: port,
@@ -159,8 +159,10 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int) {
 	}
 
 	log.Printf("MAX CAMERAS: %d", maxcameras)
+	log.Printf("Receive Loop and Send Start: Vision addr %s", serverAddr)
 
 	for {
+		framecounter++
 		for i := 0; i < maxcameras; i++ {
 			n, _, err := serverConn.ReadFromUDP(buf)
 			CheckError(err)
@@ -175,7 +177,7 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int) {
 			//log.Printf("Vision signal reveived from %s", addr)
 
 			// Receive Geometry Data
-			if packet.Geometry != nil {
+			if packet.Geometry != nil { //Geometryパケットが送られていたら
 				var lgtlp1x, lgtlp1y, lgtlp2x float32
 				var lgblp2y float32
 				for _, line := range packet.Geometry.GetField().GetFieldLines() {
@@ -242,6 +244,14 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int) {
 
 			}
 		}
+
+		if framecounter%60 == 0 {
+			log.Printf("Total %d Frames Received", framecounter)
+			if framecounter >= 960 {
+				framecounter = 0
+				log.Println("Frame Counter Reseted")
+			}
+		}
 	}
 	chvision <- true
 }
@@ -295,6 +305,15 @@ func Observer(chobserver chan bool, ourteam int, goalpos int) {
 			fmt.Println("Observer: Waiting Vision Receiver To Complete...")
 		}
 
+		var ourrobots [16]*pb_gen.SSL_DetectionRobot
+		var enemyrobots [16]*pb_gen.SSL_DetectionRobot
+		if ourteam == 0 {
+			ourrobots = bluerobots
+			enemyrobots = yellowrobots
+		} else {
+			ourrobots = yellowrobots
+			enemyrobots = bluerobots
+		}
 		/////////////////////////////////////
 		//
 		//	OUR ROBOT STATUS CALCULATION
@@ -306,7 +325,7 @@ func Observer(chobserver chan bool, ourteam int, goalpos int) {
 		var rdX64 [16]float64
 		var rdY64 [16]float64
 
-		for _, robot := range bluerobots {
+		for _, robot := range ourrobots {
 			if robot != nil {
 				i := robot.GetRobotId()
 
@@ -350,7 +369,7 @@ func Observer(chobserver chan bool, ourteam int, goalpos int) {
 		var edX64 [16]float64
 		var edY64 [16]float64
 
-		for _, enemy := range yellowrobots {
+		for _, enemy := range enemyrobots {
 			if enemy != nil {
 				i := enemy.GetRobotId()
 
@@ -517,7 +536,7 @@ func addEnemyInfoToEnemyInfos(enemyinfo [16]*pb_gen.Enemy_Infos) []*pb_gen.Enemy
 	return EnemyInfos
 }
 
-func RunServer(chserver chan bool, reportrate uint, ourteam int, goalpose int) {
+func RunServer(chserver chan bool, reportrate uint, ourteam int, goalpose int, debug bool) {
 	ipv4 := "127.0.0.1"
 	port := "30011"
 	addr := ipv4 + ":" + port
@@ -561,6 +580,9 @@ func RunServer(chserver chan bool, reportrate uint, ourteam int, goalpose int) {
 			Info:        OtherInfo,
 		}
 
+		if debug {
+			fmt.Println(RacoonMWPacket)
+		}
 		Data, _ := proto.Marshal(RacoonMWPacket)
 
 		conn.Write([]byte(Data))
@@ -579,6 +601,7 @@ func main() {
 		ourteam    = flag.String("t", "blue", "Our Team (blue or yellow)")
 		goalpos    = flag.String("g", "N", "Attack Direction Negative or Positive (N or P)")
 		reportrate = flag.Uint("r", 16, "How often report to RACOON-AI? (milliseconds)")
+		debug      = flag.Bool("d", false, "Show All Send Packet")
 	)
 
 	//OUR TEAM 0 = blue
@@ -610,7 +633,7 @@ func main() {
 	chref := make(chan bool)
 
 	go Update(chupdate)
-	go RunServer(chserver, *reportrate, ourteam_n, goalpos_n)
+	go RunServer(chserver, *reportrate, ourteam_n, goalpos_n, *debug)
 	go VisionReceive(chvision, *visionport, ourteam_n, goalpos_n)
 	go Observer(chobserver, ourteam_n, goalpos_n)
 	go RefereeReceive(chref)
