@@ -1,0 +1,64 @@
+syntax = "proto2";
+
+option go_package = "github.com/Rione-SSL/RACOON-Pi/proto/pb_gen";
+
+
+message Robot_Infos {
+  required uint32 robot_id = 1;
+  required float x = 2;
+  required float y = 3;
+  required float theta = 4;
+  required float distance_ball_robot = 5;
+  required float degree_ball_robot = 6;
+  required float speed = 7;
+  required float slope = 8;
+  required float intercept = 9;
+  required float angular_velocity = 10;
+  required bool ball_catch = 11;
+  required bool online = 12;
+  optional float battery_voltage = 13;
+}
+
+message Enemy_Infos {
+  required uint32 robot_id = 1;
+  required float x = 2;
+  required float y = 3;
+  required float theta = 4;
+  required float speed = 6;
+  required float slope = 7;
+  required float intercept = 8;
+  required float angular_velocity = 9;
+}
+
+message Ball_Info {
+  required float x = 1;
+  required float y = 2;
+  required float slope_Degree = 3;
+  required float intercept = 4;
+  required float speed = 5;
+  required float slope = 6;
+}
+
+message Goal_Info {
+    required float x = 1;
+    required float y = 2;
+}
+
+message Referee_Info {
+    required uint32 command = 1;
+    required uint32 yellow_cards = 2;
+    required uint32 red_cards = 3;
+}
+
+message Other_Infos {
+    required int32 num_of_cameras = 1;
+}
+
+message RacoonMW_Packet {
+    repeated Robot_Infos our_robots = 1;
+    repeated Enemy_Infos enemy_robots = 2;
+    required Goal_Info goal = 3;
+    required Ball_Info ball = 4;
+    required Referee_Info referee = 5;
+    required Other_Infos info = 6;
+}
