@@ -1,11 +1,15 @@
 package main
 
 import (
+	"bufio"
 	"flag"
 	"fmt"
 	"log"
 	"math"
 	"net"
+	"os"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/Rione-SSL/RACOON-MW/proto/pb_gen"
@@ -46,6 +50,11 @@ var enemy_speed [16]float32
 var enemy_angular_velocity [16]float32
 var distance_ball_robot [16]float32
 var degree_ball_robot [16]float32
+
+var framecounter int
+var fps float32
+var secperframe float32
+var isvisionrecv bool = false
 
 func Calc_degree_normalize(rad float32) float32 {
 	if rad > math.Pi {
@@ -125,9 +134,9 @@ func RefereeReceive(chref chan bool) {
 	chref <- true
 }
 
-func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int) {
+func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, replay bool) {
 	maxcameras = 0
-	framecounter := 0
+	framecounter = 0
 	serverAddr := &net.UDPAddr{
 		IP:   net.ParseIP("224.5.23.2"),
 		Port: port,
@@ -138,13 +147,49 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int) {
 	defer serverConn.Close()
 
 	buf := make([]byte, 2048)
+	var reader *bufio.Reader
+	var line []byte
+	var str string
+	var strarr []string
+	var before_unix_time int
+	var unixtime int
+	if replay {
+		log.Println("=====RECEIVING VIA DEBUG.TXT=====")
+		f, _ := os.Open("DEBUG.txt")
+		reader = bufio.NewReaderSize(f, 4096)
+		defer f.Close()
+	}
 
 	for i := 0; i < 60; i++ {
-		n, addr, err := serverConn.ReadFromUDP(buf)
-		CheckError(err)
+
+		var n int
+		var addr *net.UDPAddr
+		var err error
+		if replay {
+			line, _, err = reader.ReadLine()
+			CheckError(err)
+			str = string(line)
+			strarr = strings.Split(str, ",")
+			if i == 0 {
+				unixtime, _ = strconv.Atoi(strarr[0])
+				before_unix_time, _ = strconv.Atoi(strarr[0])
+			} else {
+				before_unix_time = unixtime
+				unixtime, _ = strconv.Atoi(strarr[0])
+			}
+			time.Sleep(time.Duration(unixtime-before_unix_time) * time.Millisecond)
+		} else {
+			n, addr, err = serverConn.ReadFromUDP(buf)
+			CheckError(err)
+		}
 
 		packet := &pb_gen.SSL_WrapperPacket{}
-		err = proto.Unmarshal(buf[0:n], packet)
+		if replay {
+			err = proto.UnmarshalText(strarr[1], packet)
+		} else {
+			err = proto.Unmarshal(buf[0:n], packet)
+		}
+
 		CheckError(err)
 
 		if i == 0 {
@@ -164,11 +209,29 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int) {
 	for {
 		framecounter++
 		for i := 0; i < maxcameras; i++ {
-			n, _, err := serverConn.ReadFromUDP(buf)
-			CheckError(err)
+			var n int
+			var err error
+			if replay {
+				line, _, err = reader.ReadLine()
+				CheckError(err)
+				str = string(line)
+				strarr = strings.Split(str, ",")
+
+				before_unix_time = unixtime
+				unixtime, _ = strconv.Atoi(strarr[0])
+				time.Sleep(time.Duration(unixtime-before_unix_time) * time.Millisecond)
+			} else {
+				n, _, err = serverConn.ReadFromUDP(buf)
+				CheckError(err)
+			}
 
 			packet := &pb_gen.SSL_WrapperPacket{}
-			err = proto.Unmarshal(buf[0:n], packet)
+			if replay {
+				//log.Println(strarr[1])
+				err = proto.UnmarshalText(strarr[1], packet)
+			} else {
+				err = proto.Unmarshal(buf[0:n], packet)
+			}
 			CheckError(err)
 
 			visionwrapper[i] = packet
@@ -204,9 +267,6 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int) {
 			for _, robot := range packet.Detection.GetRobotsBlue() {
 				num_bluerobots++
 				bluerobots[robot.GetRobotId()] = robot
-				if goalpos == 1 {
-					*robot.X = *robot.X * -1
-				}
 			}
 
 			// Get Yellow Robots
@@ -214,9 +274,6 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int) {
 			for _, robot := range packet.Detection.GetRobotsYellow() {
 				num_yellowrobots++
 				yellowrobots[robot.GetRobotId()] = robot
-				if goalpos == 1 {
-					*robot.X = *robot.X * -1
-				}
 			}
 
 			// Get Most High Confidence ball
@@ -236,22 +293,12 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int) {
 						maxconfball = fball
 					}
 				}
-				if goalpos == 1 {
-					*maxconfball.X = *maxconfball.X * -1
-				}
 
 				ball = maxconfball
 
 			}
 		}
 
-		if framecounter%60 == 0 {
-			log.Printf("Total %d Frames Received", framecounter)
-			if framecounter >= 960 {
-				framecounter = 0
-				log.Println("Frame Counter Reseted")
-			}
-		}
 	}
 	chvision <- true
 }
@@ -405,6 +452,26 @@ func Observer(chobserver chan bool, ourteam int, goalpos int) {
 	<-chobserver
 }
 
+func FPSCounter(chfps chan bool) {
+	for {
+		if framecounter != 0 {
+			isvisionrecv = true
+			fps = float32(framecounter)
+
+			framecounter = 0
+
+			secperframe = 1 / float32(fps)
+
+			log.Printf("Estimated FPS:  %f FPS, Interval %f ms", fps, secperframe)
+		} else {
+			isvisionrecv = false
+			secperframe = 100000
+		}
+
+		time.Sleep(1 * time.Second)
+	}
+}
+
 func createRobotInfo(i int, ourteam int) *pb_gen.Robot_Infos {
 	var robotid uint32 = bluerobots[i].GetRobotId()
 	var x float32 = bluerobots[i].GetX()
@@ -504,10 +571,13 @@ func createGoalInfo() *pb_gen.Goal_Info {
 	return pe
 }
 
-func createOtherInfo() *pb_gen.Other_Infos {
+func createOtherInfo(ourteam_n int32) *pb_gen.Other_Infos {
 	var numofcameras int32 = int32(maxcameras)
 	pe := &pb_gen.Other_Infos{
-		NumOfCameras: &numofcameras,
+		NumOfCameras:    &numofcameras,
+		Secperframe:     &secperframe,
+		IsVisionRecv:    &isvisionrecv,
+		AttackDirection: &ourteam_n,
 	}
 	return pe
 }
@@ -569,7 +639,7 @@ func RunServer(chserver chan bool, reportrate uint, ourteam int, goalpose int, d
 
 		GoalInfo := createGoalInfo()
 		RefereeInfo := createRefInfo()
-		OtherInfo := createOtherInfo()
+		OtherInfo := createOtherInfo(int32(ourteam))
 
 		RacoonMWPacket := &pb_gen.RacoonMW_Packet{
 			OurRobots:   RobotInfos,
@@ -583,6 +653,7 @@ func RunServer(chserver chan bool, reportrate uint, ourteam int, goalpose int, d
 		if debug {
 			fmt.Println(RacoonMWPacket)
 		}
+
 		Data, _ := proto.Marshal(RacoonMWPacket)
 
 		conn.Write([]byte(Data))
@@ -594,6 +665,34 @@ func RunServer(chserver chan bool, reportrate uint, ourteam int, goalpose int, d
 	chserver <- true
 }
 
+func RunRecorder(chrecorder chan bool, port int) {
+
+	serverAddr := &net.UDPAddr{
+		IP:   net.ParseIP("224.5.23.2"),
+		Port: port,
+	}
+	serverConn, err := net.ListenMulticastUDP("udp", nil, serverAddr)
+	CheckError(err)
+	defer serverConn.Close()
+
+	buf := make([]byte, 2048)
+
+	f, _ := os.Create("./DEBUG.txt")
+
+	for {
+		n, _, err := serverConn.ReadFromUDP(buf)
+		CheckError(err)
+
+		packet := &pb_gen.SSL_WrapperPacket{}
+		err = proto.Unmarshal(buf[0:n], packet)
+		CheckError(err)
+
+		f.WriteString(strconv.Itoa(int(time.Now().UnixMilli())) + "," + packet.String() + "\n")
+	}
+
+	chrecorder <- true
+}
+
 func main() {
 
 	var (
@@ -602,6 +701,7 @@ func main() {
 		goalpos    = flag.String("g", "N", "Attack Direction Negative or Positive (N or P)")
 		reportrate = flag.Uint("r", 16, "How often report to RACOON-AI? (milliseconds)")
 		debug      = flag.Bool("d", false, "Show All Send Packet")
+		replay     = flag.Bool("replay", false, "Replay All Packet")
 	)
 
 	//OUR TEAM 0 = blue
@@ -631,12 +731,20 @@ func main() {
 	chvision := make(chan bool)
 	chobserver := make(chan bool)
 	chref := make(chan bool)
+	chfps := make(chan bool)
 
 	go Update(chupdate)
 	go RunServer(chserver, *reportrate, ourteam_n, goalpos_n, *debug)
-	go VisionReceive(chvision, *visionport, ourteam_n, goalpos_n)
+	go VisionReceive(chvision, *visionport, ourteam_n, goalpos_n, *replay)
 	go Observer(chobserver, ourteam_n, goalpos_n)
 	go RefereeReceive(chref)
+	go FPSCounter(chfps)
+
+	if *debug {
+		chrecorder := make(chan bool)
+		go RunRecorder(chrecorder, *visionport)
+		<-chrecorder
+	}
 
 	<-chupdate
 	<-chserver

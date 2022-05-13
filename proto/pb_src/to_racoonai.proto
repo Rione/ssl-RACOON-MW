@@ -48,10 +48,15 @@ message Referee_Info {
     required uint32 command = 1;
     required uint32 yellow_cards = 2;
     required uint32 red_cards = 3;
+    optional float ball_placement_x = 4;
+    optional float ball_placement_y = 5;
 }
 
 message Other_Infos {
     required int32 num_of_cameras = 1;
+    required float secperframe = 2;
+    required bool is_vision_recv = 3;
+    required int32 attack_direction = 4;
 }
 
 message RacoonMW_Packet {
