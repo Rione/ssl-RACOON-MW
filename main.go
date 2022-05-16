@@ -14,6 +14,8 @@ import (
 
 	"github.com/Rione-SSL/RACOON-MW/proto/pb_gen"
 	"github.com/golang/protobuf/proto"
+	"github.com/rosshemsley/kalman"
+	"github.com/rosshemsley/kalman/models"
 )
 
 //グローバル宣言
@@ -33,6 +35,9 @@ var yellowrobots [16]*pb_gen.SSL_DetectionRobot
 var ball *pb_gen.SSL_DetectionBall
 
 var maxcameras int
+
+var filtered_ball_x float32
+var filtered_ball_y float32
 
 var ball_slope_degree float32
 var ball_intercept float32
@@ -55,6 +60,15 @@ var framecounter int
 var fps float32
 var secperframe float32
 var isvisionrecv bool = false
+
+// These numbers control how much smoothing the model does.
+const observationNoise = 0.1 // entries for the diagonal of R_k
+//const initialVariance = 0.01  // entries for the diagonal of P_0
+const processVariance = 0.005 // entries for the diagonal of Q_k
+
+func BallXYSmoother() {
+
+}
 
 func Calc_degree_normalize(rad float32) float32 {
 	if rad > math.Pi {
@@ -153,6 +167,7 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, repla
 	var strarr []string
 	var before_unix_time int
 	var unixtime int
+
 	if replay {
 		log.Println("=====RECEIVING VIA DEBUG.TXT=====")
 		f, _ := os.Open("DEBUG.txt")
@@ -314,7 +329,53 @@ func Observer(chobserver chan bool, ourteam int, goalpos int) {
 	var pre_enemy_Y [16]float32
 	var pre_enemy_Theta [16]float32
 
+	var t time.Time
+
+	var modelBallX *models.SimpleModel
+
+	modelBallX = models.NewSimpleModel(t, 0.0, models.SimpleModelConfig{
+		InitialVariance:     1.0,
+		ProcessVariance:     2,
+		ObservationVariance: 2.0,
+	})
+	filterBallX := kalman.NewKalmanFilter(modelBallX)
+
+	var modelBallY *models.SimpleModel
+
+	modelBallY = models.NewSimpleModel(t, 0.0, models.SimpleModelConfig{
+		InitialVariance:     1.0,
+		ProcessVariance:     2,
+		ObservationVariance: 2.0,
+	})
+	filterBallY := kalman.NewKalmanFilter(modelBallY)
+
+	//f, _ := os.Create("./DEBUG2.txt")
+
 	for {
+		/////////////////////////////////////
+		//
+		//	KALMAN FILTER (BALL)
+		//
+		/////////////////////////////////////
+		if ball != nil {
+			t = t.Add(time.Duration(secperframe * 1000 * float32(time.Millisecond)))
+			err := filterBallX.Update(t, modelBallX.NewMeasurement(float64(ball.GetX())))
+
+			if err != nil {
+				log.Println(err)
+			}
+
+			err = filterBallY.Update(t, modelBallY.NewMeasurement(float64(ball.GetY())))
+			if err != nil {
+				log.Println(err)
+			}
+			//fmt.Printf("X: before: %f, filtered value: %f\n", ball.GetX(), modelBallX.Value(filterBallX.State()))
+			//fmt.Printf("Y: before: %f, filtered value: %f\n", ball.GetY(), modelBallY.Value(filterBallY.State()))
+			filtered_ball_x = float32(modelBallX.Value(filterBallX.State()))
+			filtered_ball_y = float32(modelBallY.Value(filterBallY.State()))
+			//f.WriteString(fmt.Sprintf("%f", ball.GetX()) + "," + fmt.Sprintf("%f", modelBallX.Value(filterBallX.State())) + "\n")
+		}
+
 		/////////////////////////////////////
 		//
 		//	BALL SPEED CALCULATION
@@ -551,12 +612,14 @@ func createBallInfo() *pb_gen.Ball_Info {
 	var intercept float32 = ball_intercept
 	var speed float32 = ball_speed
 	pe := &pb_gen.Ball_Info{
-		X:            &x,
-		Y:            &y,
-		Slope_Degree: &slopedegree,
-		Intercept:    &intercept,
-		Speed:        &speed,
-		Slope:        &slope,
+		FilteredX:   &filtered_ball_x,
+		FilteredY:   &filtered_ball_y,
+		X:           &x,
+		Y:           &y,
+		SlopeDegree: &slopedegree,
+		Intercept:   &intercept,
+		Speed:       &speed,
+		Slope:       &slope,
 	}
 	return pe
 }

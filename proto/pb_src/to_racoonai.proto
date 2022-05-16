@@ -31,12 +31,14 @@ message Enemy_Infos {
 }
 
 message Ball_Info {
-  required float x = 1;
-  required float y = 2;
-  required float slope_Degree = 3;
-  required float intercept = 4;
-  required float speed = 5;
-  required float slope = 6;
+  required float filtered_x = 1;
+  required float filtered_y = 2;
+  required float x = 3;
+  required float y = 4;
+  required float slope_degree = 5;
+  required float intercept = 6;
+  required float speed = 7;
+  required float slope = 8;
 }
 
 message Goal_Info {
