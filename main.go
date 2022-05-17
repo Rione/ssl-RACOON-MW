@@ -578,7 +578,7 @@ func addRobotInfoToRobotInfos(robotinfo [16]*pb_gen.Robot_Infos) []*pb_gen.Robot
 	return RobotInfos
 }
 
-func createEnemyInfo(i int, ourteam int) *pb_gen.Enemy_Infos {
+func createEnemyInfo(i int, ourteam int) *pb_gen.Robot_Infos {
 	var robotid uint32 = yellowrobots[i].GetRobotId()
 	var x float32 = yellowrobots[i].GetX()
 	var y float32 = yellowrobots[i].GetY()
@@ -591,7 +591,7 @@ func createEnemyInfo(i int, ourteam int) *pb_gen.Enemy_Infos {
 		theta = bluerobots[i].GetOrientation()
 	}
 
-	pe := &pb_gen.Enemy_Infos{
+	pe := &pb_gen.Robot_Infos{
 		RobotId:         &robotid,
 		X:               &x,
 		Y:               &y,
@@ -657,8 +657,8 @@ func createRefInfo() *pb_gen.Referee_Info {
 	return pe
 }
 
-func addEnemyInfoToEnemyInfos(enemyinfo [16]*pb_gen.Enemy_Infos) []*pb_gen.Enemy_Infos {
-	EnemyInfos := []*pb_gen.Enemy_Infos{}
+func addEnemyInfoToEnemyInfos(enemyinfo [16]*pb_gen.Robot_Infos) []*pb_gen.Robot_Infos {
+	EnemyInfos := []*pb_gen.Robot_Infos{}
 
 	for _, enemy := range enemyinfo {
 		if enemy != nil {
@@ -691,7 +691,7 @@ func RunServer(chserver chan bool, reportrate uint, ourteam int, goalpose int, d
 
 		RobotInfos := addRobotInfoToRobotInfos(robot_infos)
 
-		var enemy_infos [16]*pb_gen.Enemy_Infos
+		var enemy_infos [16]*pb_gen.Robot_Infos
 		for _, enemy := range yellowrobots {
 			enemy_infos[enemy.GetRobotId()] = createEnemyInfo(int(enemy.GetRobotId()), ourteam)
 		}
