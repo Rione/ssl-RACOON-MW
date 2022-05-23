@@ -23,6 +23,7 @@ import (
 var balldetect [16]bool
 var visionwrapper [16]*pb_gen.SSL_WrapperPacket
 var visiondetection [16]*pb_gen.SSL_DetectionFrame
+var geometrydata *pb_gen.SSL_GeometryData
 var left_geo_goal_x float32
 var left_geo_goal_y float32
 
@@ -32,6 +33,7 @@ var num_yellowrobots int
 var bluerobots [16]*pb_gen.SSL_DetectionRobot
 var yellowrobots [16]*pb_gen.SSL_DetectionRobot
 
+var ref_command *pb_gen.Referee
 var ball *pb_gen.SSL_DetectionBall
 
 var maxcameras int
@@ -121,29 +123,47 @@ func Update(chupdate chan bool) {
 	chupdate <- true
 }
 
-func RefereeReceive(chref chan bool) {
+var pre_command *pb_gen.Referee_Command
+var now_command *pb_gen.Referee_Command
+var last_command *pb_gen.Referee_Info_Command
+
+func RefereeClient(chref chan bool) {
 	serverAddr := &net.UDPAddr{
-		IP:   net.ParseIP("224.5.23.1"),
+		IP:   net.ParseIP("224.5.23.2"),
 		Port: 10003,
 	}
 
+	log.Printf("Referee Client started.")
 	serverConn, err := net.ListenMulticastUDP("udp", nil, serverAddr)
 	CheckError(err)
 	defer serverConn.Close()
 
-	buf := make([]byte, 2048)
+	buf := make([]byte, 1024)
+	refcounter := 0
 
 	for {
 		n, addr, err := serverConn.ReadFromUDP(buf)
 		CheckError(err)
 
-		packet := &pb_gen.State{}
+		packet := &pb_gen.Referee{}
 		err = proto.Unmarshal(buf[0:n], packet)
 		CheckError(err)
+		ref_command = packet
 
-		log.Printf("Referee signal reveived from %s", addr)
+		now_command = packet.Command
+		if pre_command == nil {
+			pre_command = packet.Command
+		}
 
-		fmt.Println(packet)
+		if now_command.String() != pre_command.String() {
+			last_command = (*pb_gen.Referee_Info_Command)(pre_command)
+		}
+		pre_command = packet.Command
+		if refcounter%600 == 0 {
+			log.Printf("==== REFEREE OK KEEP RECEIVING FROM %s ====", addr)
+			refcounter = 0
+		}
+		refcounter++
 	}
 	chref <- true
 }
@@ -256,6 +276,7 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, repla
 
 			// Receive Geometry Data
 			if packet.Geometry != nil { //Geometryパケットが送られていたら
+				geometrydata = packet.Geometry
 				var lgtlp1x, lgtlp1y, lgtlp2x float32
 				var lgblp2y float32
 				for _, line := range packet.Geometry.GetField().GetFieldLines() {
@@ -624,13 +645,57 @@ func createBallInfo() *pb_gen.Ball_Info {
 	return pe
 }
 
-func createGoalInfo() *pb_gen.Goal_Info {
+func createGeometryInfo() *pb_gen.Geometry_Info {
 	var x float32 = left_geo_goal_x
 	var y float32 = left_geo_goal_y
-	pe := &pb_gen.Goal_Info{
-		X: &x,
-		Y: &y,
+	var FieldLength int32
+	var FieldWidth int32
+	var GoalWidth int32
+	var GoalDepth int32
+	var BoundaryWidth int32
+	var PenaltyAreaWidth int32
+	var PenaltyAreaDepth int32
+	var CenterCircleRadius int32
+	var LineThickness int32
+	var GoalCenterToPenaltyMark int32
+	var GoalHeight int32
+	var BallRadius float32
+	var MaxRobotRadius float32
+
+	if geometrydata != nil {
+		FieldLength = geometrydata.Field.GetFieldLength()
+		FieldWidth = geometrydata.Field.GetFieldWidth()
+		GoalWidth = geometrydata.Field.GetGoalWidth()
+		GoalDepth = geometrydata.Field.GetGoalDepth()
+		BoundaryWidth = geometrydata.Field.GetBoundaryWidth()
+		PenaltyAreaWidth = geometrydata.Field.GetPenaltyAreaWidth()
+		PenaltyAreaDepth = geometrydata.Field.GetPenaltyAreaDepth()
+		CenterCircleRadius = geometrydata.Field.GetCenterCircleRadius()
+		LineThickness = geometrydata.Field.GetLineThickness()
+		GoalCenterToPenaltyMark = geometrydata.Field.GetGoalCenterToPenaltyMark()
+		GoalHeight = geometrydata.Field.GetGoalHeight()
+		BallRadius = geometrydata.Field.GetBallRadius()
+		MaxRobotRadius = geometrydata.Field.GetMaxRobotRadius()
 	}
+
+	pe := &pb_gen.Geometry_Info{
+		FieldLength:             &FieldLength,
+		FieldWidth:              &FieldWidth,
+		GoalWidth:               &GoalWidth,
+		GoalDepth:               &GoalDepth,
+		BoundaryWidth:           &BoundaryWidth,
+		PenaltyAreaWidth:        &PenaltyAreaWidth,
+		PenaltyAreaDepth:        &PenaltyAreaDepth,
+		CenterCircleRadius:      &CenterCircleRadius,
+		LineThickness:           &LineThickness,
+		GoalCenterToPenaltyMark: &GoalCenterToPenaltyMark,
+		GoalHeight:              &GoalHeight,
+		BallRadius:              &BallRadius,
+		MaxRobotRadius:          &MaxRobotRadius,
+		GoalX:                   &x,
+		GoalY:                   &y,
+	}
+
 	return pe
 }
 
@@ -645,14 +710,43 @@ func createOtherInfo(ourteam_n int32) *pb_gen.Other_Infos {
 	return pe
 }
 
-func createRefInfo() *pb_gen.Referee_Info {
-	var command uint32 = 1
-	var yellowcards uint32 = 1
-	var redcards uint32 = 1
+func createRefInfo(ourteam int) *pb_gen.Referee_Info {
+	var yellowcards uint32
+	var redcards uint32
+	var command *pb_gen.Referee_Info_Command
+	var stage *pb_gen.Referee_Info_Stage
+	var next_command *pb_gen.Referee_Info_Command
+	var bpX float32
+	var bpY float32
+
+	if ref_command != nil {
+		command = (*pb_gen.Referee_Info_Command)(ref_command.Command)
+		stage = (*pb_gen.Referee_Info_Stage)(ref_command.Stage)
+		next_command = (*pb_gen.Referee_Info_Command)(ref_command.NextCommand)
+		bpX = ref_command.GetDesignatedPosition().GetX()
+		bpY = ref_command.GetDesignatedPosition().GetY()
+		if ourteam == 0 {
+			yellowcards = ref_command.Blue.GetYellowCards()
+			redcards = ref_command.Blue.GetRedCards()
+		} else {
+			yellowcards = ref_command.Yellow.GetYellowCards()
+			redcards = ref_command.Blue.GetRedCards()
+		}
+
+	} else {
+		yellowcards = 0
+		redcards = 0
+	}
+
 	pe := &pb_gen.Referee_Info{
-		Command:     &command,
-		YellowCards: &yellowcards,
-		RedCards:    &redcards,
+		Command:        command,
+		Stage:          stage,
+		YellowCards:    &yellowcards,
+		RedCards:       &redcards,
+		PreCommand:     last_command,
+		NextCommand:    next_command,
+		BallPlacementX: &bpX,
+		BallPlacementY: &bpY,
 	}
 	return pe
 }
@@ -700,14 +794,14 @@ func RunServer(chserver chan bool, reportrate uint, ourteam int, goalpose int, d
 
 		BallInfo := createBallInfo()
 
-		GoalInfo := createGoalInfo()
-		RefereeInfo := createRefInfo()
+		GeometryInfo := createGeometryInfo()
+		RefereeInfo := createRefInfo(ourteam)
 		OtherInfo := createOtherInfo(int32(ourteam))
 
 		RacoonMWPacket := &pb_gen.RacoonMW_Packet{
 			OurRobots:   RobotInfos,
 			EnemyRobots: EnemyInfos,
-			Goal:        GoalInfo,
+			Geometry:    GeometryInfo,
 			Ball:        BallInfo,
 			Referee:     RefereeInfo,
 			Info:        OtherInfo,
@@ -800,8 +894,8 @@ func main() {
 	go RunServer(chserver, *reportrate, ourteam_n, goalpos_n, *debug)
 	go VisionReceive(chvision, *visionport, ourteam_n, goalpos_n, *replay)
 	go Observer(chobserver, ourteam_n, goalpos_n)
-	go RefereeReceive(chref)
 	go FPSCounter(chfps)
+	go RefereeClient(chref)
 
 	if *debug {
 		chrecorder := make(chan bool)

@@ -30,17 +30,130 @@ message Ball_Info {
   required float slope = 8;
 }
 
-message Goal_Info {
-    required float x = 1;
-    required float y = 2;
+message Geometry_Info {
+  // Field length (distance between goal lines) in mm
+  required int32 field_length = 1;
+  // Field width (distance between touch lines) in mm
+  required int32 field_width = 2;
+  // Goal width (distance between inner edges of goal posts) in mm
+  required int32 goal_width = 3;
+  // Goal depth (distance from outer goal line edge to inner goal back) in mm
+  required int32 goal_depth = 4;
+  // Boundary width (distance from touch/goal line centers to boundary walls) in mm
+  required int32 boundary_width = 5;
+  // Depth of the penalty/defense area (measured between line centers) in mm
+  optional int32 penalty_area_depth = 6;
+  // Width of the penalty/defense area (measured between line centers) in mm
+  optional int32 penalty_area_width = 7;
+  // Radius of the center circle (measured between line centers) in mm
+  optional int32 center_circle_radius = 8;
+  // Thickness/width of the lines on the field in mm
+  optional int32 line_thickness = 9;
+  // Distance between the goal center and the center of the penalty mark in mm
+  optional int32 goal_center_to_penalty_mark = 10;
+  // Goal height in mm
+  optional int32 goal_height = 11;
+  // Ball radius in mm (note that this is a float type to represent sub-mm precision)
+  optional float ball_radius = 12;
+  // Max allowed robot radius in mm (note that this is a float type to represent sub-mm precision)
+  optional float max_robot_radius = 13;
+
+  required float goal_x = 14;
+  required float goal_y = 15;
 }
 
 message Referee_Info {
-    required uint32 command = 1;
-    required uint32 yellow_cards = 2;
-    required uint32 red_cards = 3;
-    optional float ball_placement_x = 4;
-    optional float ball_placement_y = 5;
+    // These are the "fine" states of play on the field.
+    enum Command {
+        // All robots should completely stop moving.
+        HALT = 0;
+        // Robots must keep 50 cm from the ball.
+        STOP = 1;
+        // A prepared kickoff or penalty may now be taken.
+        NORMAL_START = 2;
+        // The ball is dropped and free for either team.
+        FORCE_START = 3;
+        // The yellow team may move into kickoff position.
+        PREPARE_KICKOFF_YELLOW = 4;
+        // The blue team may move into kickoff position.
+        PREPARE_KICKOFF_BLUE = 5;
+        // The yellow team may move into penalty position.
+        PREPARE_PENALTY_YELLOW = 6;
+        // The blue team may move into penalty position.
+        PREPARE_PENALTY_BLUE = 7;
+        // The yellow team may take a direct free kick.
+        DIRECT_FREE_YELLOW = 8;
+        // The blue team may take a direct free kick.
+        DIRECT_FREE_BLUE = 9;
+        // The yellow team may take an indirect free kick.
+        INDIRECT_FREE_YELLOW = 10;
+        // The blue team may take an indirect free kick.
+        INDIRECT_FREE_BLUE = 11;
+        // The yellow team is currently in a timeout.
+        TIMEOUT_YELLOW = 12;
+        // The blue team is currently in a timeout.
+        TIMEOUT_BLUE = 13;
+        // The yellow team just scored a goal.
+        // For information only.
+        // For rules compliance, teams must treat as STOP.
+        // Deprecated: Use the score field from the team infos instead. That way, you can also detect revoked goals.
+        GOAL_YELLOW = 14 [deprecated = true];
+        // The blue team just scored a goal. See also GOAL_YELLOW.
+        GOAL_BLUE = 15 [deprecated = true];
+        // Equivalent to STOP, but the yellow team must pick up the ball and
+        // drop it in the Designated Position.
+        BALL_PLACEMENT_YELLOW = 16;
+        // Equivalent to STOP, but the blue team must pick up the ball and drop
+        // it in the Designated Position.
+        BALL_PLACEMENT_BLUE = 17;
+    }
+    required Command command = 1;
+    // These are the "coarse" stages of the game.
+    enum Stage {
+        // The first half is about to start.
+        // A kickoff is called within this stage.
+        // This stage ends with the NORMAL_START.
+        NORMAL_FIRST_HALF_PRE = 0;
+        // The first half of the normal game, before half time.
+        NORMAL_FIRST_HALF = 1;
+        // Half time between first and second halves.
+        NORMAL_HALF_TIME = 2;
+        // The second half is about to start.
+        // A kickoff is called within this stage.
+        // This stage ends with the NORMAL_START.
+        NORMAL_SECOND_HALF_PRE = 3;
+        // The second half of the normal game, after half time.
+        NORMAL_SECOND_HALF = 4;
+        // The break before extra time.
+        EXTRA_TIME_BREAK = 5;
+        // The first half of extra time is about to start.
+        // A kickoff is called within this stage.
+        // This stage ends with the NORMAL_START.
+        EXTRA_FIRST_HALF_PRE = 6;
+        // The first half of extra time.
+        EXTRA_FIRST_HALF = 7;
+        // Half time between first and second extra halves.
+        EXTRA_HALF_TIME = 8;
+        // The second half of extra time is about to start.
+        // A kickoff is called within this stage.
+        // This stage ends with the NORMAL_START.
+        EXTRA_SECOND_HALF_PRE = 9;
+        // The second half of extra time.
+        EXTRA_SECOND_HALF = 10;
+        // The break before penalty shootout.
+        PENALTY_SHOOTOUT_BREAK = 11;
+        // The penalty shootout.
+        PENALTY_SHOOTOUT = 12;
+        // The game is over.
+        POST_GAME = 13;
+    }
+    required Stage stage = 2;
+    required uint32 yellow_cards = 3;
+    required uint32 red_cards = 4;
+    optional Command pre_command = 5;
+    optional Command next_command = 6;
+    optional float ball_placement_x = 7;
+    optional float ball_placement_y = 8;
 }
 
 message Other_Infos {
@@ -53,7 +166,7 @@ message Other_Infos {
 message RacoonMW_Packet {
     repeated Robot_Infos our_robots = 1;
     repeated Robot_Infos enemy_robots = 2;
-    required Goal_Info goal = 3;
+    required Geometry_Info geometry = 3;
     required Ball_Info ball = 4;
     required Referee_Info referee = 5;
     required Other_Infos info = 6;
