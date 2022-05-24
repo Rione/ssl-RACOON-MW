@@ -9,7 +9,7 @@ message Robot_Infos {
   required float y = 3;
   required float theta = 4;
   optional float distance_ball_robot = 5;
-  optional float degree_ball_robot = 6;
+  optional float radian_ball_robot = 6;
   required float speed = 7;
   required float slope = 8;
   required float intercept = 9;
@@ -24,7 +24,7 @@ message Ball_Info {
   required float filtered_y = 2;
   required float x = 3;
   required float y = 4;
-  required float slope_degree = 5;
+  required float slope_radian = 5;
   required float intercept = 6;
   required float speed = 7;
   required float slope = 8;

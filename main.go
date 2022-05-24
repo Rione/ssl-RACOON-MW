@@ -56,7 +56,7 @@ var enemy_intercept [16]float32
 var enemy_speed [16]float32
 var enemy_angular_velocity [16]float32
 var distance_ball_robot [16]float32
-var degree_ball_robot [16]float32
+var radian_ball_robot [16]float32
 
 var framecounter int
 var fps float32
@@ -481,7 +481,7 @@ func Observer(chobserver chan bool, ourteam int, goalpos int) {
 				pre_robot_Y[i] = robot.GetY()
 				pre_robot_Theta[i] = robot.GetOrientation()
 
-				degree_ball_robot[i] = Calc_degree_normalize(Calc_degree(ball.GetX(), ball.GetY(), robot.GetX(), robot.GetY()) - robot.GetOrientation())
+				radian_ball_robot[i] = Calc_degree_normalize(Calc_degree(ball.GetX(), ball.GetY(), robot.GetX(), robot.GetY()) - robot.GetOrientation())
 				distance_ball_robot[i] = Calc_distance(ball.GetX(), ball.GetY(), robot.GetX(), robot.GetY())
 
 			}
@@ -575,7 +575,7 @@ func createRobotInfo(i int, ourteam int) *pb_gen.Robot_Infos {
 		Y:                 &y,
 		Theta:             &theta,
 		DistanceBallRobot: &distance_ball_robot[i],
-		DegreeBallRobot:   &degree_ball_robot[i],
+		RadianBallRobot:   &radian_ball_robot[i],
 		Speed:             &robot_speed[i],
 		Slope:             &robot_slope[i],
 		Intercept:         &robot_intercept[i],
@@ -628,7 +628,7 @@ func createEnemyInfo(i int, ourteam int) *pb_gen.Robot_Infos {
 func createBallInfo() *pb_gen.Ball_Info {
 	var x float32 = ball.GetX()
 	var y float32 = ball.GetY()
-	var slopedegree float32 = ball_slope_degree
+	var sloperadian float32 = ball_slope_degree
 	var slope float32 = ball_slope
 	var intercept float32 = ball_intercept
 	var speed float32 = ball_speed
@@ -637,7 +637,7 @@ func createBallInfo() *pb_gen.Ball_Info {
 		FilteredY:   &filtered_ball_y,
 		X:           &x,
 		Y:           &y,
-		SlopeDegree: &slopedegree,
+		SlopeRadian: &sloperadian,
 		Intercept:   &intercept,
 		Speed:       &speed,
 		Slope:       &slope,
