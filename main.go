@@ -409,7 +409,7 @@ func Observer(chobserver chan bool, ourteam int, goalpos int) {
 			var ball_difference_X = ball_X - pre_ball_X
 			var ball_difference_Y = ball_Y - pre_ball_Y
 
-			if ball_difference_X != 0 && ball_difference_Y != 0 {
+			if ball_difference_X != 0 || ball_difference_Y != 0 {
 				ball_slope = ball_difference_Y / ball_difference_X
 				bdX64 := float64(ball_difference_X)
 				bdY64 := float64(ball_difference_Y)
