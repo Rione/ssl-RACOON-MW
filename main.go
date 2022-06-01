@@ -403,8 +403,8 @@ func Observer(chobserver chan bool, ourteam int, goalpos int) {
 		//
 		/////////////////////////////////////
 		if ball != nil && pre_ball_X != 0 {
-			var ball_X float32 = *ball.X
-			var ball_Y float32 = *ball.Y
+			var ball_X float32 = filtered_ball_x
+			var ball_Y float32 = filtered_ball_y
 
 			var ball_difference_X = ball_X - pre_ball_X
 			var ball_difference_Y = ball_Y - pre_ball_Y
