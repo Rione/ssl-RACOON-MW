@@ -372,163 +372,169 @@ func Observer(chobserver chan bool, ourteam int, goalpos int) {
 
 	//f, _ := os.Create("./DEBUG2.txt")
 
+	var pre_framecounter int = 0
+
 	for {
-		/////////////////////////////////////
-		//
-		//	KALMAN FILTER (BALL)
-		//
-		/////////////////////////////////////
-		if ball != nil {
-			t = t.Add(time.Duration(secperframe * 1000 * float32(time.Millisecond)))
-			err := filterBallX.Update(t, modelBallX.NewMeasurement(float64(ball.GetX())))
+		if framecounter-pre_framecounter > 0 {
 
-			if err != nil {
-				log.Println(err)
+			/////////////////////////////////////
+			//
+			//	KALMAN FILTER (BALL)
+			//
+			/////////////////////////////////////
+			if ball != nil {
+				t = t.Add(time.Duration(secperframe * 1000 * float32(time.Millisecond)))
+				err := filterBallX.Update(t, modelBallX.NewMeasurement(float64(ball.GetX())))
+
+				if err != nil {
+					log.Println(err)
+				}
+
+				err = filterBallY.Update(t, modelBallY.NewMeasurement(float64(ball.GetY())))
+				if err != nil {
+					log.Println(err)
+				}
+				//fmt.Printf("X: before: %f, filtered value: %f\n", ball.GetX(), modelBallX.Value(filterBallX.State()))
+				//fmt.Printf("Y: before: %f, filtered value: %f\n", ball.GetY(), modelBallY.Value(filterBallY.State()))
+				filtered_ball_x = float32(modelBallX.Value(filterBallX.State()))
+				filtered_ball_y = float32(modelBallY.Value(filterBallY.State()))
+				//f.WriteString(fmt.Sprintf("%f", ball.GetX()) + "," + fmt.Sprintf("%f", modelBallX.Value(filterBallX.State())) + "\n")
 			}
 
-			err = filterBallY.Update(t, modelBallY.NewMeasurement(float64(ball.GetY())))
-			if err != nil {
-				log.Println(err)
-			}
-			//fmt.Printf("X: before: %f, filtered value: %f\n", ball.GetX(), modelBallX.Value(filterBallX.State()))
-			//fmt.Printf("Y: before: %f, filtered value: %f\n", ball.GetY(), modelBallY.Value(filterBallY.State()))
-			filtered_ball_x = float32(modelBallX.Value(filterBallX.State()))
-			filtered_ball_y = float32(modelBallY.Value(filterBallY.State()))
-			//f.WriteString(fmt.Sprintf("%f", ball.GetX()) + "," + fmt.Sprintf("%f", modelBallX.Value(filterBallX.State())) + "\n")
-		}
+			/////////////////////////////////////
+			//
+			//	BALL SPEED CALCULATION
+			//
+			/////////////////////////////////////
+			if ball != nil && pre_ball_X != 0 {
+				var ball_X float32 = filtered_ball_x
+				var ball_Y float32 = filtered_ball_y
 
-		/////////////////////////////////////
-		//
-		//	BALL SPEED CALCULATION
-		//
-		/////////////////////////////////////
-		if ball != nil && pre_ball_X != 0 {
-			var ball_X float32 = filtered_ball_x
-			var ball_Y float32 = filtered_ball_y
+				var ball_difference_X = ball_X - pre_ball_X
+				var ball_difference_Y = ball_Y - pre_ball_Y
 
-			var ball_difference_X = ball_X - pre_ball_X
-			var ball_difference_Y = ball_Y - pre_ball_Y
+				if ball_difference_X != 0 || ball_difference_Y != 0 {
+					ball_slope = ball_difference_Y / ball_difference_X
+					bdX64 := float64(ball_difference_X)
+					bdY64 := float64(ball_difference_Y)
+					ball_slope_degree = float32(math.Atan2(bdX64, bdY64))
+					ball_intercept = ball_Y - (ball_slope * ball_X)
+					ball_speed = float32(math.Sqrt(math.Pow(bdX64, 2)+math.Pow(bdY64, 2)) / 0.016)
+				} else {
+					ball_slope_degree = 0.0
+					ball_intercept = 0.0
+					ball_speed = 0.0
+				}
 
-			if ball_difference_X != 0 || ball_difference_Y != 0 {
-				ball_slope = ball_difference_Y / ball_difference_X
-				bdX64 := float64(ball_difference_X)
-				bdY64 := float64(ball_difference_Y)
-				ball_slope_degree = float32(math.Atan2(bdX64, bdY64))
-				ball_intercept = ball_Y - (ball_slope * ball_X)
-				ball_speed = float32(math.Sqrt(math.Pow(bdX64, 2)+math.Pow(bdY64, 2)) / 0.016)
+				pre_ball_X = ball.GetX()
+				pre_ball_Y = ball.GetY()
+
+			} else if ball != nil {
+				pre_ball_X = ball.GetX()
+				pre_ball_Y = ball.GetY()
+
 			} else {
-				ball_slope_degree = 0.0
-				ball_intercept = 0.0
-				ball_speed = 0.0
+				time.Sleep(1 * time.Second)
+				fmt.Println("Observer: Waiting Vision Receiver To Complete...")
 			}
 
-			pre_ball_X = ball.GetX()
-			pre_ball_Y = ball.GetY()
+			var ourrobots [16]*pb_gen.SSL_DetectionRobot
+			var enemyrobots [16]*pb_gen.SSL_DetectionRobot
+			if ourteam == 0 {
+				ourrobots = bluerobots
+				enemyrobots = yellowrobots
+			} else {
+				ourrobots = yellowrobots
+				enemyrobots = bluerobots
+			}
+			/////////////////////////////////////
+			//
+			//	OUR ROBOT STATUS CALCULATION
+			//
+			/////////////////////////////////////
+			var robot_difference_X [16]float32
+			var robot_difference_Y [16]float32
+			var robot_difference_Theta [16]float32
+			var rdX64 [16]float64
+			var rdY64 [16]float64
 
-		} else if ball != nil {
-			pre_ball_X = ball.GetX()
-			pre_ball_Y = ball.GetY()
+			for _, robot := range ourrobots {
+				if robot != nil {
+					i := robot.GetRobotId()
 
-		} else {
-			time.Sleep(1 * time.Second)
-			fmt.Println("Observer: Waiting Vision Receiver To Complete...")
-		}
+					robot_difference_X[i] = pre_robot_X[i] - robot.GetX()
+					robot_difference_Y[i] = pre_robot_Y[i] - robot.GetY()
+					robot_difference_Theta[i] = pre_robot_Theta[i] - robot.GetOrientation()
 
-		var ourrobots [16]*pb_gen.SSL_DetectionRobot
-		var enemyrobots [16]*pb_gen.SSL_DetectionRobot
-		if ourteam == 0 {
-			ourrobots = bluerobots
-			enemyrobots = yellowrobots
-		} else {
-			ourrobots = yellowrobots
-			enemyrobots = bluerobots
-		}
-		/////////////////////////////////////
-		//
-		//	OUR ROBOT STATUS CALCULATION
-		//
-		/////////////////////////////////////
-		var robot_difference_X [16]float32
-		var robot_difference_Y [16]float32
-		var robot_difference_Theta [16]float32
-		var rdX64 [16]float64
-		var rdY64 [16]float64
+					rdX64[i] = float64(robot_difference_X[i])
+					rdY64[i] = float64(robot_difference_Y[i])
 
-		for _, robot := range ourrobots {
-			if robot != nil {
-				i := robot.GetRobotId()
+					if robot_difference_Y[i] != 0 || robot_difference_X[i] != 0 {
+						robot_slope[i] = robot_difference_Y[i] / robot_difference_X[i]
+						robot_intercept[i] = robot.GetY() - (robot_slope[i] * robot.GetX())
+						robot_speed[i] = float32(math.Sqrt(math.Pow(rdX64[i], 2)+math.Pow(rdY64[i], 2)) / 0.016)
+					} else {
+						robot_slope[i] = 0.0
+						robot_intercept[i] = robot.GetY()
+						robot_speed[i] = 0.0
+					}
 
-				robot_difference_X[i] = pre_robot_X[i] - robot.GetX()
-				robot_difference_Y[i] = pre_robot_Y[i] - robot.GetY()
-				robot_difference_Theta[i] = pre_robot_Theta[i] - robot.GetOrientation()
+					robot_angular_velocity[i] = robot_difference_Theta[i] / 0.016
 
-				rdX64[i] = float64(robot_difference_X[i])
-				rdY64[i] = float64(robot_difference_Y[i])
+					pre_robot_X[i] = robot.GetX()
+					pre_robot_Y[i] = robot.GetY()
+					pre_robot_Theta[i] = robot.GetOrientation()
 
-				if robot_difference_Y[i] != 0 || robot_difference_X[i] != 0 {
-					robot_slope[i] = robot_difference_Y[i] / robot_difference_X[i]
-					robot_intercept[i] = robot.GetY() - (robot_slope[i] * robot.GetX())
-					robot_speed[i] = float32(math.Sqrt(math.Pow(rdX64[i], 2)+math.Pow(rdY64[i], 2)) / 0.016)
-				} else {
-					robot_slope[i] = 0.0
-					robot_intercept[i] = robot.GetY()
-					robot_speed[i] = 0.0
+					radian_ball_robot[i] = Calc_degree_normalize(Calc_degree(ball.GetX(), ball.GetY(), robot.GetX(), robot.GetY()) - robot.GetOrientation())
+					distance_ball_robot[i] = Calc_distance(ball.GetX(), ball.GetY(), robot.GetX(), robot.GetY())
+
 				}
-
-				robot_angular_velocity[i] = robot_difference_Theta[i] / 0.016
-
-				pre_robot_X[i] = robot.GetX()
-				pre_robot_Y[i] = robot.GetY()
-				pre_robot_Theta[i] = robot.GetOrientation()
-
-				radian_ball_robot[i] = Calc_degree_normalize(Calc_degree(ball.GetX(), ball.GetY(), robot.GetX(), robot.GetY()) - robot.GetOrientation())
-				distance_ball_robot[i] = Calc_distance(ball.GetX(), ball.GetY(), robot.GetX(), robot.GetY())
-
 			}
-		}
 
-		/////////////////////////////////////
-		//
-		//	ENEMY ROBOT STATUS CALCULATION
-		//
-		/////////////////////////////////////
-		var enemy_difference_X [16]float32
-		var enemy_difference_Y [16]float32
-		var enemy_difference_Theta [16]float32
-		var edX64 [16]float64
-		var edY64 [16]float64
+			/////////////////////////////////////
+			//
+			//	ENEMY ROBOT STATUS CALCULATION
+			//
+			/////////////////////////////////////
+			var enemy_difference_X [16]float32
+			var enemy_difference_Y [16]float32
+			var enemy_difference_Theta [16]float32
+			var edX64 [16]float64
+			var edY64 [16]float64
 
-		for _, enemy := range enemyrobots {
-			if enemy != nil {
-				i := enemy.GetRobotId()
+			for _, enemy := range enemyrobots {
+				if enemy != nil {
+					i := enemy.GetRobotId()
 
-				enemy_difference_X[i] = pre_enemy_X[i] - enemy.GetX()
-				enemy_difference_Y[i] = pre_enemy_Y[i] - enemy.GetY()
-				enemy_difference_Theta[i] = pre_enemy_Theta[i] - enemy.GetOrientation()
+					enemy_difference_X[i] = pre_enemy_X[i] - enemy.GetX()
+					enemy_difference_Y[i] = pre_enemy_Y[i] - enemy.GetY()
+					enemy_difference_Theta[i] = pre_enemy_Theta[i] - enemy.GetOrientation()
 
-				edX64[i] = float64(enemy_difference_X[i])
-				edY64[i] = float64(enemy_difference_Y[i])
+					edX64[i] = float64(enemy_difference_X[i])
+					edY64[i] = float64(enemy_difference_Y[i])
 
-				if enemy_difference_Y[i] != 0 || enemy_difference_X[i] != 0 {
-					enemy_slope[i] = enemy_difference_Y[i] / enemy_difference_X[i]
-					enemy_intercept[i] = enemy.GetY() - (enemy_slope[i] * enemy.GetX())
-					enemy_speed[i] = float32(math.Sqrt(math.Pow(edX64[i], 2)+math.Pow(edY64[i], 2)) / 0.016)
-				} else {
-					enemy_slope[i] = 0.0
-					enemy_intercept[i] = enemy.GetY()
-					enemy_speed[i] = 0.0
+					if enemy_difference_Y[i] != 0 || enemy_difference_X[i] != 0 {
+						enemy_slope[i] = enemy_difference_Y[i] / enemy_difference_X[i]
+						enemy_intercept[i] = enemy.GetY() - (enemy_slope[i] * enemy.GetX())
+						enemy_speed[i] = float32(math.Sqrt(math.Pow(edX64[i], 2)+math.Pow(edY64[i], 2)) / 0.016)
+					} else {
+						enemy_slope[i] = 0.0
+						enemy_intercept[i] = enemy.GetY()
+						enemy_speed[i] = 0.0
+					}
+
+					enemy_angular_velocity[i] = enemy_difference_Theta[i] / 0.016
+
+					pre_enemy_X[i] = enemy.GetX()
+					pre_enemy_Y[i] = enemy.GetY()
+					pre_enemy_Theta[i] = enemy.GetOrientation()
 				}
-
-				enemy_angular_velocity[i] = enemy_difference_Theta[i] / 0.016
-
-				pre_enemy_X[i] = enemy.GetX()
-				pre_enemy_Y[i] = enemy.GetY()
-				pre_enemy_Theta[i] = enemy.GetOrientation()
 			}
-		}
 
-		//Wait 16ms (60FPS)
-		time.Sleep(16 * 1000 * 1000)
+			//Wait 16ms (60FPS)
+			time.Sleep(16 * 1000 * 1000)
+		}
+		pre_framecounter = framecounter
 	}
 
 	<-chobserver
@@ -539,8 +545,6 @@ func FPSCounter(chfps chan bool) {
 		if framecounter != 0 {
 			isvisionrecv = true
 			fps = float32(framecounter)
-
-			framecounter = 0
 
 			secperframe = 1 / float32(fps)
 
