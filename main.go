@@ -546,6 +546,8 @@ func FPSCounter(chfps chan bool) {
 			isvisionrecv = true
 			fps = float32(framecounter)
 
+			framecounter = 0
+
 			secperframe = 1 / float32(fps)
 
 			log.Printf("Estimated FPS:  %f FPS, Interval %f ms", fps, secperframe)
