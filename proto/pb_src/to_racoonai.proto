@@ -158,9 +158,11 @@ message Referee_Info {
 
 message Other_Infos {
     required int32 num_of_cameras = 1;
-    required float secperframe = 2;
-    required bool is_vision_recv = 3;
-    required int32 attack_direction = 4;
+    required int32 num_of_our_robots = 2;
+    required int32 num_of_enemy_robots = 3;
+    required float secperframe = 4;
+    required bool is_vision_recv = 5;
+    required int32 attack_direction = 6;
 }
 
 message RacoonMW_Packet {

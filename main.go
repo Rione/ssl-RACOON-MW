@@ -68,10 +68,6 @@ const observationNoise = 0.1 // entries for the diagonal of R_k
 //const initialVariance = 0.01  // entries for the diagonal of P_0
 const processVariance = 0.005 // entries for the diagonal of Q_k
 
-func BallXYSmoother() {
-
-}
-
 func Calc_degree_normalize(rad float32) float32 {
 	if rad > math.Pi {
 		rad -= 2 * math.Pi
@@ -120,7 +116,6 @@ func Update(chupdate chan bool) {
 		balldetect[packet.GetRobotId()] = packet.GetInfrared()
 		log.Printf("State change signal recived from %s ", addr)
 	}
-	chupdate <- true
 }
 
 var pre_command *pb_gen.Referee_Command
@@ -165,10 +160,46 @@ func RefereeClient(chref chan bool) {
 		}
 		refcounter++
 	}
-	chref <- true
 }
 
-func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, replay bool) {
+var ourrobot_invisible_count [16]int
+var ourrobot_is_visible [16]bool
+
+func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmode bool, replay bool) {
+	var pre_ball_X float32
+	var pre_ball_Y float32
+	var pre_robot_X [16]float32
+	var pre_robot_Y [16]float32
+	var pre_robot_Theta [16]float32
+
+	var pre_enemy_X [16]float32
+	var pre_enemy_Y [16]float32
+	var pre_enemy_Theta [16]float32
+
+	var t time.Time
+
+	var modelBallX *models.SimpleModel
+
+	modelBallX = models.NewSimpleModel(t, 0.0, models.SimpleModelConfig{
+		InitialVariance:     1.0,
+		ProcessVariance:     2,
+		ObservationVariance: 2.0,
+	})
+	filterBallX := kalman.NewKalmanFilter(modelBallX)
+
+	var modelBallY *models.SimpleModel
+
+	modelBallY = models.NewSimpleModel(t, 0.0, models.SimpleModelConfig{
+		InitialVariance:     1.0,
+		ProcessVariance:     2,
+		ObservationVariance: 2.0,
+	})
+	filterBallY := kalman.NewKalmanFilter(modelBallY)
+
+	//f, _ := os.Create("./DEBUG2.txt")
+
+	var pre_framecounter int = 0
+
 	maxcameras = 0
 	framecounter = 0
 	serverAddr := &net.UDPAddr{
@@ -298,11 +329,13 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, repla
 				}
 			}
 
+			var visible_in_vision [16]bool
 			// Get Blue Robots
 			num_bluerobots = 0
 			for _, robot := range packet.Detection.GetRobotsBlue() {
 				num_bluerobots++
 				bluerobots[robot.GetRobotId()] = robot
+				visible_in_vision[robot.GetRobotId()] = true
 			}
 
 			// Get Yellow Robots
@@ -310,6 +343,17 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, repla
 			for _, robot := range packet.Detection.GetRobotsYellow() {
 				num_yellowrobots++
 				yellowrobots[robot.GetRobotId()] = robot
+				visible_in_vision[robot.GetRobotId()] = true
+			}
+
+			for i := 0; i < 16; i++ {
+				if !visible_in_vision[i] {
+					if ourrobot_invisible_count[i] <= 15 {
+						ourrobot_invisible_count[i]++
+					}
+				} else {
+					ourrobot_invisible_count[i] = 0
+				}
 			}
 
 			// Get Most High Confidence ball
@@ -335,46 +379,6 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, repla
 			}
 		}
 
-	}
-	chvision <- true
-}
-
-func Observer(chobserver chan bool, ourteam int, goalpos int) {
-	var pre_ball_X float32
-	var pre_ball_Y float32
-	var pre_robot_X [16]float32
-	var pre_robot_Y [16]float32
-	var pre_robot_Theta [16]float32
-
-	var pre_enemy_X [16]float32
-	var pre_enemy_Y [16]float32
-	var pre_enemy_Theta [16]float32
-
-	var t time.Time
-
-	var modelBallX *models.SimpleModel
-
-	modelBallX = models.NewSimpleModel(t, 0.0, models.SimpleModelConfig{
-		InitialVariance:     1.0,
-		ProcessVariance:     2,
-		ObservationVariance: 2.0,
-	})
-	filterBallX := kalman.NewKalmanFilter(modelBallX)
-
-	var modelBallY *models.SimpleModel
-
-	modelBallY = models.NewSimpleModel(t, 0.0, models.SimpleModelConfig{
-		InitialVariance:     1.0,
-		ProcessVariance:     2,
-		ObservationVariance: 2.0,
-	})
-	filterBallY := kalman.NewKalmanFilter(modelBallY)
-
-	//f, _ := os.Create("./DEBUG2.txt")
-
-	var pre_framecounter int = 0
-
-	for {
 		if framecounter-pre_framecounter > 0 {
 
 			/////////////////////////////////////
@@ -531,13 +535,26 @@ func Observer(chobserver chan bool, ourteam int, goalpos int) {
 				}
 			}
 
-			//Wait 16ms (60FPS)
-			time.Sleep(16 * 1000 * 1000)
+			/////////////////////////////////////
+			//
+			//	BALL STATUS CALCULATION
+			//  FOR SIMULATOR MODE
+			//
+			/////////////////////////////////////
+			if simmode {
+				for i := 0; i < 16; i++ {
+					if distance_ball_robot[i]/1000 < 0.12 && radian_ball_robot[i]*180/math.Pi < 10 && radian_ball_robot[i]*180/math.Pi > -10 {
+						balldetect[i] = true
+					} else {
+						balldetect[i] = false
+					}
+				}
+			}
 		}
 		pre_framecounter = framecounter
-	}
 
-	<-chobserver
+	}
+	chvision <- true
 }
 
 func FPSCounter(chfps chan bool) {
@@ -560,37 +577,54 @@ func FPSCounter(chfps chan bool) {
 	}
 }
 
-func createRobotInfo(i int, ourteam int) *pb_gen.Robot_Infos {
-	var robotid uint32 = bluerobots[i].GetRobotId()
-	var x float32 = bluerobots[i].GetX()
-	var y float32 = bluerobots[i].GetY()
-	var theta float32 = bluerobots[i].GetOrientation()
-
-	if ourteam == 1 {
-		robotid = yellowrobots[i].GetRobotId()
-		x = yellowrobots[i].GetX()
-		y = yellowrobots[i].GetY()
-		theta = yellowrobots[i].GetOrientation()
+func CheckVisionRobot(chvisrobot chan bool) {
+	for {
+		if isvisionrecv {
+			for i := 0; i < 16; i++ {
+				if ourrobot_invisible_count[i] <= 10 {
+					ourrobot_is_visible[i] = true
+				}
+			}
+		}
+		time.Sleep(1 * time.Second)
 	}
+}
 
-	var batt float32 = 12.15
-	var online bool = true
-	pe := &pb_gen.Robot_Infos{
-		RobotId:           &robotid,
-		X:                 &x,
-		Y:                 &y,
-		Theta:             &theta,
-		DistanceBallRobot: &distance_ball_robot[i],
-		RadianBallRobot:   &radian_ball_robot[i],
-		Speed:             &robot_speed[i],
-		Slope:             &robot_slope[i],
-		Intercept:         &robot_intercept[i],
-		AngularVelocity:   &robot_angular_velocity[i],
-		BallCatch:         &balldetect[i],
-		Online:            &online,
-		BatteryVoltage:    &batt,
+func createRobotInfo(i int, ourteam int, simmode bool) *pb_gen.Robot_Infos {
+	if ourrobot_is_visible[i] {
+		var robotid uint32 = bluerobots[i].GetRobotId()
+		var x float32 = bluerobots[i].GetX()
+		var y float32 = bluerobots[i].GetY()
+		var theta float32 = bluerobots[i].GetOrientation()
+
+		if ourteam == 1 {
+			robotid = yellowrobots[i].GetRobotId()
+			x = yellowrobots[i].GetX()
+			y = yellowrobots[i].GetY()
+			theta = yellowrobots[i].GetOrientation()
+		}
+
+		var batt float32 = 12.15
+		var online bool = true
+		pe := &pb_gen.Robot_Infos{
+			RobotId:           &robotid,
+			X:                 &x,
+			Y:                 &y,
+			Theta:             &theta,
+			DistanceBallRobot: &distance_ball_robot[i],
+			RadianBallRobot:   &radian_ball_robot[i],
+			Speed:             &robot_speed[i],
+			Slope:             &robot_slope[i],
+			Intercept:         &robot_intercept[i],
+			AngularVelocity:   &robot_angular_velocity[i],
+			BallCatch:         &balldetect[i],
+			Online:            &online,
+			BatteryVoltage:    &batt,
+		}
+		return pe
+	} else {
+		return nil
 	}
-	return pe
 }
 
 func addRobotInfoToRobotInfos(robotinfo [16]*pb_gen.Robot_Infos) []*pb_gen.Robot_Infos {
@@ -707,11 +741,23 @@ func createGeometryInfo() *pb_gen.Geometry_Info {
 
 func createOtherInfo(ourteam_n int32) *pb_gen.Other_Infos {
 	var numofcameras int32 = int32(maxcameras)
+	var numofourrobots int32
+	var numofenemyrobots int32
+	if ourteam_n == 0 {
+		numofourrobots = int32(num_bluerobots)
+		numofenemyrobots = int32(num_yellowrobots)
+	} else {
+		numofourrobots = int32(num_yellowrobots)
+		numofenemyrobots = int32(num_bluerobots)
+	}
+
 	pe := &pb_gen.Other_Infos{
-		NumOfCameras:    &numofcameras,
-		Secperframe:     &secperframe,
-		IsVisionRecv:    &isvisionrecv,
-		AttackDirection: &ourteam_n,
+		NumOfCameras:     &numofcameras,
+		NumOfOurRobots:   &numofourrobots,
+		NumOfEnemyRobots: &numofenemyrobots,
+		Secperframe:      &secperframe,
+		IsVisionRecv:     &isvisionrecv,
+		AttackDirection:  &ourteam_n,
 	}
 	return pe
 }
@@ -769,7 +815,7 @@ func addEnemyInfoToEnemyInfos(enemyinfo [16]*pb_gen.Robot_Infos) []*pb_gen.Robot
 	return EnemyInfos
 }
 
-func RunServer(chserver chan bool, reportrate uint, ourteam int, goalpose int, debug bool) {
+func RunServer(chserver chan bool, reportrate uint, ourteam int, goalpose int, debug bool, simmode bool) {
 	ipv4 := "127.0.0.1"
 	port := "30011"
 	addr := ipv4 + ":" + port
@@ -786,7 +832,7 @@ func RunServer(chserver chan bool, reportrate uint, ourteam int, goalpose int, d
 
 		var robot_infos [16]*pb_gen.Robot_Infos
 		for _, robot := range bluerobots {
-			robot_infos[robot.GetRobotId()] = createRobotInfo(int(robot.GetRobotId()), ourteam)
+			robot_infos[robot.GetRobotId()] = createRobotInfo(int(robot.GetRobotId()), ourteam, simmode)
 		}
 
 		RobotInfos := addRobotInfoToRobotInfos(robot_infos)
@@ -864,6 +910,7 @@ func main() {
 		goalpos    = flag.String("g", "N", "Attack Direction Negative or Positive (N or P)")
 		reportrate = flag.Uint("r", 16, "How often report to RACOON-AI? (milliseconds)")
 		debug      = flag.Bool("d", false, "Show All Send Packet")
+		simmode    = flag.Bool("s", false, "Simulation Mode (Emulate Ball Sensor)")
 		replay     = flag.Bool("replay", false, "Replay All Packet")
 	)
 
@@ -892,14 +939,14 @@ func main() {
 	chupdate := make(chan bool)
 	chserver := make(chan bool)
 	chvision := make(chan bool)
-	chobserver := make(chan bool)
 	chref := make(chan bool)
 	chfps := make(chan bool)
+	chvisrobot := make(chan bool)
 
 	go Update(chupdate)
-	go RunServer(chserver, *reportrate, ourteam_n, goalpos_n, *debug)
-	go VisionReceive(chvision, *visionport, ourteam_n, goalpos_n, *replay)
-	go Observer(chobserver, ourteam_n, goalpos_n)
+	go RunServer(chserver, *reportrate, ourteam_n, goalpos_n, *debug, *simmode)
+	go VisionReceive(chvision, *visionport, ourteam_n, goalpos_n, *simmode, *replay)
+	go CheckVisionRobot(chvisrobot)
 	go FPSCounter(chfps)
 	go RefereeClient(chref)
 
@@ -912,7 +959,6 @@ func main() {
 	<-chupdate
 	<-chserver
 	<-chvision
-	<-chobserver
 	<-chref
 
 }
