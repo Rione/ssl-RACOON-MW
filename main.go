@@ -165,6 +165,20 @@ func RefereeClient(chref chan bool) {
 var ourrobot_invisible_count [16]int
 var ourrobot_is_visible [16]bool
 
+var enemyrobot_invisible_count [16]int
+var enemyrobot_is_visible [16]bool
+
+var robot_difference_X [16]float32
+var robot_difference_Y [16]float32
+var robot_difference_Theta [16]float32
+
+var enemy_difference_X [16]float32
+var enemy_difference_Y [16]float32
+var enemy_difference_Theta [16]float32
+
+var ball_difference_X float32
+var ball_difference_Y float32
+
 func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmode bool, replay bool) {
 	var pre_ball_X float32
 	var pre_ball_Y float32
@@ -329,30 +343,44 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 				}
 			}
 
-			var visible_in_vision [16]bool
-			// Get Blue Robots
+			var visible_in_vision_b [16]bool
+			var visible_in_vision_y [16]bool
+			num_yellowrobots = 0
 			num_bluerobots = 0
+
+			for i := 0; i < 16; i++ {
+				visible_in_vision_b[i] = false
+				visible_in_vision_y[i] = false
+			}
+			// Get Blue Robots
 			for _, robot := range packet.Detection.GetRobotsBlue() {
 				num_bluerobots++
 				bluerobots[robot.GetRobotId()] = robot
-				visible_in_vision[robot.GetRobotId()] = true
+				visible_in_vision_b[robot.GetRobotId()] = true
 			}
 
 			// Get Yellow Robots
-			num_yellowrobots = 0
 			for _, robot := range packet.Detection.GetRobotsYellow() {
 				num_yellowrobots++
 				yellowrobots[robot.GetRobotId()] = robot
-				visible_in_vision[robot.GetRobotId()] = true
+				visible_in_vision_y[robot.GetRobotId()] = true
 			}
 
 			for i := 0; i < 16; i++ {
-				if !visible_in_vision[i] {
+				if !visible_in_vision_b[i] {
 					if ourrobot_invisible_count[i] <= 15 {
 						ourrobot_invisible_count[i]++
 					}
 				} else {
 					ourrobot_invisible_count[i] = 0
+				}
+
+				if !visible_in_vision_y[i] {
+					if enemyrobot_invisible_count[i] <= 15 {
+						enemyrobot_invisible_count[i]++
+					}
+				} else {
+					enemyrobot_invisible_count[i] = 0
 				}
 			}
 
@@ -414,8 +442,8 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 				var ball_X float32 = filtered_ball_x
 				var ball_Y float32 = filtered_ball_y
 
-				var ball_difference_X = ball_X - pre_ball_X
-				var ball_difference_Y = ball_Y - pre_ball_Y
+				ball_difference_X = ball_X - pre_ball_X
+				ball_difference_Y = ball_Y - pre_ball_Y
 
 				if ball_difference_X != 0 || ball_difference_Y != 0 {
 					ball_slope = ball_difference_Y / ball_difference_X
@@ -456,9 +484,6 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 			//	OUR ROBOT STATUS CALCULATION
 			//
 			/////////////////////////////////////
-			var robot_difference_X [16]float32
-			var robot_difference_Y [16]float32
-			var robot_difference_Theta [16]float32
 			var rdX64 [16]float64
 			var rdY64 [16]float64
 
@@ -500,9 +525,6 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 			//	ENEMY ROBOT STATUS CALCULATION
 			//
 			/////////////////////////////////////
-			var enemy_difference_X [16]float32
-			var enemy_difference_Y [16]float32
-			var enemy_difference_Theta [16]float32
 			var edX64 [16]float64
 			var edY64 [16]float64
 
@@ -583,6 +605,14 @@ func CheckVisionRobot(chvisrobot chan bool) {
 			for i := 0; i < 16; i++ {
 				if ourrobot_invisible_count[i] <= 10 {
 					ourrobot_is_visible[i] = true
+				} else {
+					ourrobot_is_visible[i] = false
+				}
+
+				if enemyrobot_invisible_count[i] <= 10 {
+					enemyrobot_is_visible[i] = true
+				} else {
+					ourrobot_is_visible[i] = false
 				}
 			}
 		}
@@ -591,40 +621,43 @@ func CheckVisionRobot(chvisrobot chan bool) {
 }
 
 func createRobotInfo(i int, ourteam int, simmode bool) *pb_gen.Robot_Infos {
-	if ourrobot_is_visible[i] {
-		var robotid uint32 = bluerobots[i].GetRobotId()
-		var x float32 = bluerobots[i].GetX()
-		var y float32 = bluerobots[i].GetY()
-		var theta float32 = bluerobots[i].GetOrientation()
+	var robotid uint32 = bluerobots[i].GetRobotId()
+	var x float32 = bluerobots[i].GetX()
+	var y float32 = bluerobots[i].GetY()
+	var theta float32 = bluerobots[i].GetOrientation()
+	var diffx float32 = robot_difference_X[i]
+	var diffy float32 = robot_difference_Y[i]
+	var difftheta float32 = robot_difference_Theta[i]
 
-		if ourteam == 1 {
-			robotid = yellowrobots[i].GetRobotId()
-			x = yellowrobots[i].GetX()
-			y = yellowrobots[i].GetY()
-			theta = yellowrobots[i].GetOrientation()
-		}
-
-		var batt float32 = 12.15
-		var online bool = true
-		pe := &pb_gen.Robot_Infos{
-			RobotId:           &robotid,
-			X:                 &x,
-			Y:                 &y,
-			Theta:             &theta,
-			DistanceBallRobot: &distance_ball_robot[i],
-			RadianBallRobot:   &radian_ball_robot[i],
-			Speed:             &robot_speed[i],
-			Slope:             &robot_slope[i],
-			Intercept:         &robot_intercept[i],
-			AngularVelocity:   &robot_angular_velocity[i],
-			BallCatch:         &balldetect[i],
-			Online:            &online,
-			BatteryVoltage:    &batt,
-		}
-		return pe
-	} else {
-		return nil
+	if ourteam == 1 {
+		robotid = yellowrobots[i].GetRobotId()
+		x = yellowrobots[i].GetX()
+		y = yellowrobots[i].GetY()
+		theta = yellowrobots[i].GetOrientation()
 	}
+
+	var batt float32 = 12.15
+	var online bool = true
+	pe := &pb_gen.Robot_Infos{
+		RobotId:           &robotid,
+		X:                 &x,
+		Y:                 &y,
+		Theta:             &theta,
+		DiffX:             &diffx,
+		DiffY:             &diffy,
+		DiffTheta:         &difftheta,
+		DistanceBallRobot: &distance_ball_robot[i],
+		RadianBallRobot:   &radian_ball_robot[i],
+		Speed:             &robot_speed[i],
+		Slope:             &robot_slope[i],
+		Intercept:         &robot_intercept[i],
+		AngularVelocity:   &robot_angular_velocity[i],
+		BallCatch:         &balldetect[i],
+		Online:            &online,
+		Visible:           &ourrobot_is_visible[i],
+		BatteryVoltage:    &batt,
+	}
+	return pe
 }
 
 func addRobotInfoToRobotInfos(robotinfo [16]*pb_gen.Robot_Infos) []*pb_gen.Robot_Infos {
@@ -640,43 +673,60 @@ func addRobotInfoToRobotInfos(robotinfo [16]*pb_gen.Robot_Infos) []*pb_gen.Robot
 }
 
 func createEnemyInfo(i int, ourteam int) *pb_gen.Robot_Infos {
-	var robotid uint32 = yellowrobots[i].GetRobotId()
-	var x float32 = yellowrobots[i].GetX()
-	var y float32 = yellowrobots[i].GetY()
-	var theta float32 = yellowrobots[i].GetOrientation()
+	if enemyrobot_is_visible[i] {
+		var robotid uint32 = yellowrobots[i].GetRobotId()
+		var x float32 = yellowrobots[i].GetX()
+		var y float32 = yellowrobots[i].GetY()
+		var theta float32 = yellowrobots[i].GetOrientation()
+		var diffx float32 = enemy_difference_X[i]
+		var diffy float32 = enemy_difference_Y[i]
+		var difftheta float32 = enemy_difference_Theta[i]
 
-	if ourteam == 1 {
-		robotid = bluerobots[i].GetRobotId()
-		x = bluerobots[i].GetX()
-		y = bluerobots[i].GetY()
-		theta = bluerobots[i].GetOrientation()
-	}
+		if ourteam == 1 {
+			robotid = bluerobots[i].GetRobotId()
+			x = bluerobots[i].GetX()
+			y = bluerobots[i].GetY()
+			theta = bluerobots[i].GetOrientation()
+		}
 
-	pe := &pb_gen.Robot_Infos{
-		RobotId:         &robotid,
-		X:               &x,
-		Y:               &y,
-		Theta:           &theta,
-		Speed:           &enemy_speed[i],
-		Slope:           &enemy_slope[i],
-		Intercept:       &enemy_intercept[i],
-		AngularVelocity: &enemy_angular_velocity[i],
+		pe := &pb_gen.Robot_Infos{
+			RobotId:         &robotid,
+			X:               &x,
+			Y:               &y,
+			DiffX:           &diffx,
+			DiffY:           &diffy,
+			DiffTheta:       &difftheta,
+			Theta:           &theta,
+			Speed:           &enemy_speed[i],
+			Slope:           &enemy_slope[i],
+			Intercept:       &enemy_intercept[i],
+			AngularVelocity: &enemy_angular_velocity[i],
+			Visible:         &enemyrobot_is_visible[i],
+		}
+		return pe
+	} else {
+		return nil
 	}
-	return pe
 }
 
 func createBallInfo() *pb_gen.Ball_Info {
 	var x float32 = ball.GetX()
 	var y float32 = ball.GetY()
+	var z float32 = ball.GetZ()
 	var sloperadian float32 = ball_slope_degree
 	var slope float32 = ball_slope
 	var intercept float32 = ball_intercept
 	var speed float32 = ball_speed
+	var diffx float32 = ball_difference_X
+	var diffy float32 = ball_difference_Y
 	pe := &pb_gen.Ball_Info{
 		FilteredX:   &filtered_ball_x,
 		FilteredY:   &filtered_ball_y,
 		X:           &x,
 		Y:           &y,
+		Z:           &z,
+		DiffX:       &diffx,
+		DiffY:       &diffy,
 		SlopeRadian: &sloperadian,
 		Intercept:   &intercept,
 		Speed:       &speed,
@@ -743,12 +793,13 @@ func createOtherInfo(ourteam_n int32) *pb_gen.Other_Infos {
 	var numofcameras int32 = int32(maxcameras)
 	var numofourrobots int32
 	var numofenemyrobots int32
-	if ourteam_n == 0 {
-		numofourrobots = int32(num_bluerobots)
-		numofenemyrobots = int32(num_yellowrobots)
-	} else {
-		numofourrobots = int32(num_yellowrobots)
-		numofenemyrobots = int32(num_bluerobots)
+	for i := 0; i < 16; i++ {
+		if ourrobot_is_visible[i] {
+			numofourrobots++
+		}
+		if enemyrobot_is_visible[i] {
+			numofenemyrobots++
+		}
 	}
 
 	pe := &pb_gen.Other_Infos{

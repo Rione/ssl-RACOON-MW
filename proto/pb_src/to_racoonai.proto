@@ -10,13 +10,17 @@ message Robot_Infos {
   required float theta = 4;
   optional float distance_ball_robot = 5;
   optional float radian_ball_robot = 6;
-  required float speed = 7;
-  required float slope = 8;
-  required float intercept = 9;
-  required float angular_velocity = 10;
-  optional bool ball_catch = 11;
-  optional bool online = 12;
-  optional float battery_voltage = 13;
+  required float diff_x = 7;
+  required float diff_y = 8;
+  required float diff_theta = 9;
+  required float speed = 10;
+  required float slope = 11;
+  required float intercept = 12;
+  required float angular_velocity = 13;
+  required bool visible = 14;
+  optional bool ball_catch = 15;
+  optional bool online = 16;
+  optional float battery_voltage = 17;
 }
 
 message Ball_Info {
@@ -24,10 +28,13 @@ message Ball_Info {
   required float filtered_y = 2;
   required float x = 3;
   required float y = 4;
-  required float slope_radian = 5;
-  required float intercept = 6;
-  required float speed = 7;
-  required float slope = 8;
+  required float z = 5;
+  required float diff_x = 6;
+  required float diff_y = 7;
+  required float slope_radian = 8;
+  required float intercept = 9;
+  required float speed = 10;
+  required float slope = 11;
 }
 
 message Geometry_Info {
