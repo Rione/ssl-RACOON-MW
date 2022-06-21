@@ -915,8 +915,9 @@ func RunServer(chserver chan bool, reportrate uint, ourteam int, goalpose int, d
 		}
 
 		Data, _ := proto.Marshal(RacoonMWPacket)
-
-		conn.Write([]byte(Data))
+		if isvisionrecv && geometrydata != nil {
+			conn.Write([]byte(Data))
+		}
 
 		time.Sleep(time.Duration(reportrate) * time.Millisecond)
 		counter = counter + 1
