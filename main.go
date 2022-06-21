@@ -328,10 +328,10 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 					if line.GetName() == "LeftGoalTopLine" {
 						lgtlp1x = line.GetP1().GetX()
 						lgtlp1y = line.GetP1().GetY()
-						lgtlp2x = line.GetP2().GetX()
 					}
 					if line.GetName() == "LeftGoalBottomLine" {
 						lgblp2y = line.GetP2().GetY()
+						lgtlp2x = line.GetP1().GetX()
 					}
 				}
 				left_geo_goal_x = (lgtlp1x + lgtlp2x) * 0.5
