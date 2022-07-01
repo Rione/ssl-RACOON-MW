@@ -789,7 +789,7 @@ func createGeometryInfo() *pb_gen.Geometry_Info {
 	return pe
 }
 
-func createOtherInfo(ourteam_n int32) *pb_gen.Other_Infos {
+func createOtherInfo(goalpos_n int32) *pb_gen.Other_Infos {
 	var numofcameras int32 = int32(maxcameras)
 	var numofourrobots int32
 	var numofenemyrobots int32
@@ -808,7 +808,7 @@ func createOtherInfo(ourteam_n int32) *pb_gen.Other_Infos {
 		NumOfEnemyRobots: &numofenemyrobots,
 		Secperframe:      &secperframe,
 		IsVisionRecv:     &isvisionrecv,
-		AttackDirection:  &ourteam_n,
+		AttackDirection:  &goalpos_n,
 	}
 	return pe
 }
@@ -899,7 +899,7 @@ func RunServer(chserver chan bool, reportrate uint, ourteam int, goalpose int, d
 
 		GeometryInfo := createGeometryInfo()
 		RefereeInfo := createRefInfo(ourteam)
-		OtherInfo := createOtherInfo(int32(ourteam))
+		OtherInfo := createOtherInfo(int32(goalpose))
 
 		RacoonMWPacket := &pb_gen.RacoonMW_Packet{
 			OurRobots:   RobotInfos,
@@ -983,7 +983,7 @@ func main() {
 
 	var goalpos_n int
 	if *goalpos == "N" {
-		goalpos_n = 0
+		goalpos_n = -1
 	} else {
 		goalpos_n = 1
 	}
