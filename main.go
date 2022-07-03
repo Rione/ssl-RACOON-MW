@@ -124,7 +124,7 @@ var last_command *pb_gen.Referee_Info_Command
 
 func RefereeClient(chref chan bool) {
 	serverAddr := &net.UDPAddr{
-		IP:   net.ParseIP("224.5.23.2"),
+		IP:   net.ParseIP("224.5.23.1"),
 		Port: 10003,
 	}
 
