@@ -337,10 +337,6 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 				left_geo_goal_x = (lgtlp1x + lgtlp2x) * 0.5
 				left_geo_goal_y = (lgtlp1y + lgblp2y) * 0.5
 
-				//Invert
-				if goalpos == 1 {
-					left_geo_goal_x = left_geo_goal_x * -1
-				}
 			}
 
 			var visible_in_vision_b [16]bool
@@ -565,7 +561,7 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 			/////////////////////////////////////
 			if simmode {
 				for i := 0; i < 16; i++ {
-					if distance_ball_robot[i]/1000 < 0.12 && radian_ball_robot[i]*180/math.Pi < 10 && radian_ball_robot[i]*180/math.Pi > -10 {
+					if distance_ball_robot[i]/1000 < 0.115 && radian_ball_robot[i]*180/math.Pi < 10 && radian_ball_robot[i]*180/math.Pi > -10 {
 						balldetect[i] = true
 					} else {
 						balldetect[i] = false
