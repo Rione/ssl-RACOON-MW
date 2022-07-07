@@ -612,7 +612,7 @@ func CheckVisionRobot(chvisrobot chan bool) {
 				if enemyrobot_invisible_count[i] <= 10 {
 					enemyrobot_is_visible[i] = true
 				} else {
-					ourrobot_is_visible[i] = false
+					enemyrobot_is_visible[i] = false
 				}
 			}
 		}
