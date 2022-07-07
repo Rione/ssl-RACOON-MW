@@ -338,7 +338,7 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 				left_geo_goal_y = (lgtlp1y + lgblp2y) * 0.5
 
 				//Invert
-				if goalpos == 0 {
+				if goalpos == -1 {
 					left_geo_goal_x = left_geo_goal_x * -1
 				}
 			}
