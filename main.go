@@ -368,19 +368,39 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 
 			for i := 0; i < 16; i++ {
 				if !visible_in_vision_b[i] {
-					if ourrobot_invisible_count[i] <= 15 {
-						ourrobot_invisible_count[i]++
+					if ourteam == 0 {
+						if ourrobot_invisible_count[i] <= 15 {
+							ourrobot_invisible_count[i]++
+						}
+					} else {
+						if enemyrobot_invisible_count[i] <= 15 {
+							enemyrobot_invisible_count[i]++
+						}
 					}
 				} else {
-					ourrobot_invisible_count[i] = 0
+					if ourteam == 0 {
+						ourrobot_invisible_count[i] = 0
+					} else {
+						enemyrobot_invisible_count[i] = 0
+					}
 				}
 
 				if !visible_in_vision_y[i] {
-					if enemyrobot_invisible_count[i] <= 15 {
-						enemyrobot_invisible_count[i]++
+					if ourteam == 0 {
+						if enemyrobot_invisible_count[i] <= 15 {
+							enemyrobot_invisible_count[i]++
+						}
+					} else {
+						if ourrobot_invisible_count[i] <= 15 {
+							ourrobot_invisible_count[i]++
+						}
 					}
 				} else {
-					enemyrobot_invisible_count[i] = 0
+					if ourteam == 0 {
+						enemyrobot_invisible_count[i] = 0
+					} else {
+						ourrobot_invisible_count[i] = 0
+					}
 				}
 			}
 
@@ -882,16 +902,25 @@ func RunServer(chserver chan bool, reportrate uint, ourteam int, goalpose int, d
 	for {
 
 		var robot_infos [16]*pb_gen.Robot_Infos
-		for _, robot := range bluerobots {
-			robot_infos[robot.GetRobotId()] = createRobotInfo(int(robot.GetRobotId()), ourteam, simmode)
+		var enemy_infos [16]*pb_gen.Robot_Infos
+
+		if ourteam == 0 {
+			for _, robot := range bluerobots {
+				robot_infos[robot.GetRobotId()] = createRobotInfo(int(robot.GetRobotId()), ourteam, simmode)
+			}
+			for _, enemy := range yellowrobots {
+				enemy_infos[enemy.GetRobotId()] = createEnemyInfo(int(enemy.GetRobotId()), ourteam)
+			}
+		} else {
+			for _, robot := range yellowrobots {
+				robot_infos[robot.GetRobotId()] = createRobotInfo(int(robot.GetRobotId()), ourteam, simmode)
+			}
+			for _, enemy := range bluerobots {
+				enemy_infos[enemy.GetRobotId()] = createEnemyInfo(int(enemy.GetRobotId()), ourteam)
+			}
 		}
 
 		RobotInfos := addRobotInfoToRobotInfos(robot_infos)
-
-		var enemy_infos [16]*pb_gen.Robot_Infos
-		for _, enemy := range yellowrobots {
-			enemy_infos[enemy.GetRobotId()] = createEnemyInfo(int(enemy.GetRobotId()), ourteam)
-		}
 
 		EnemyInfos := addEnemyInfoToEnemyInfos(enemy_infos)
 
@@ -900,6 +929,8 @@ func RunServer(chserver chan bool, reportrate uint, ourteam int, goalpose int, d
 		GeometryInfo := createGeometryInfo()
 		RefereeInfo := createRefInfo(ourteam)
 		OtherInfo := createOtherInfo(int32(goalpose))
+
+		//log.Println(OtherInfo.GetAttackDirection())
 
 		RacoonMWPacket := &pb_gen.RacoonMW_Packet{
 			OurRobots:   RobotInfos,
