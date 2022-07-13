@@ -225,7 +225,7 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 	CheckError(err)
 	defer serverConn.Close()
 
-	buf := make([]byte, 2048)
+	buf := make([]byte, 4096)
 	var reader *bufio.Reader
 	var line []byte
 	var str string
