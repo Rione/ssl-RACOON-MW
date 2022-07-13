@@ -221,7 +221,7 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 		Port: port,
 	}
 	log.Printf("Receiving Vision Multicast at Port %d", port)
-	serverConn, err := net.ListenMulticastUDP("udp", nil, serverAddr)
+	serverConn, err := net.ListenUDP("udp", serverAddr)
 	CheckError(err)
 	defer serverConn.Close()
 
