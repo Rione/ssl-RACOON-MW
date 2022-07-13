@@ -100,7 +100,9 @@ func Update(chupdate chan bool) {
 		Port: 40000,
 	}
 
-	serverConn, err := net.ListenMulticastUDP("udp", nil, serverAddr)
+	interfacename, _ := net.InterfaceByName("en9")
+
+	serverConn, err := net.ListenMulticastUDP("udp", interfacename, serverAddr)
 	CheckError(err)
 	defer serverConn.Close()
 
