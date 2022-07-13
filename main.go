@@ -415,8 +415,8 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 			}
 			if packet.Detection.GetBalls() != nil {
 				for _, fball := range packet.Detection.GetBalls() {
-					var maxconf float32 = *maxconfball.X
-					var conf float32 = *fball.X
+					var maxconf float32 = *maxconfball.Confidence
+					var conf float32 = *fball.Confidence
 
 					if maxconf < conf {
 						maxconfball = fball
