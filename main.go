@@ -133,7 +133,7 @@ func RefereeClient(chref chan bool) {
 	CheckError(err)
 	defer serverConn.Close()
 
-	buf := make([]byte, 1024)
+	buf := make([]byte, 2048)
 	refcounter := 0
 
 	for {
