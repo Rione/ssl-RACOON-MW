@@ -418,7 +418,7 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 					var maxconf float32 = *maxconfball.X
 					var conf float32 = *fball.X
 
-					if maxconf > conf {
+					if maxconf < conf {
 						maxconfball = fball
 					}
 				}
