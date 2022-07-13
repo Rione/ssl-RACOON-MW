@@ -1047,6 +1047,6 @@ func main() {
 
 func CheckError(err error) {
 	if err != nil {
-		log.Fatal("Error: ", err)
+		log.Println("Error: ", err)
 	}
 }
