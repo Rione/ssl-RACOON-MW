@@ -181,7 +181,7 @@ var enemy_difference_Theta [16]float32
 var ball_difference_X float32
 var ball_difference_Y float32
 
-func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmode bool, replay bool) {
+func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmode bool, replay bool, halfswitch_n int) {
 	var pre_ball_X float32
 	var pre_ball_Y float32
 	var pre_robot_X [16]float32
@@ -355,16 +355,50 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 			}
 			// Get Blue Robots
 			for _, robot := range packet.Detection.GetRobotsBlue() {
-				num_bluerobots++
-				bluerobots[robot.GetRobotId()] = robot
-				visible_in_vision_b[robot.GetRobotId()] = true
+				switch halfswitch_n {
+				case 0:
+					num_bluerobots++
+					bluerobots[robot.GetRobotId()] = robot
+					visible_in_vision_b[robot.GetRobotId()] = true
+
+				case 1:
+					if robot.GetX() > 0 {
+						num_bluerobots++
+						bluerobots[robot.GetRobotId()] = robot
+						visible_in_vision_b[robot.GetRobotId()] = true
+					}
+
+				case -1:
+					if robot.GetX() <= 0 {
+						num_bluerobots++
+						bluerobots[robot.GetRobotId()] = robot
+						visible_in_vision_b[robot.GetRobotId()] = true
+					}
+				}
 			}
 
 			// Get Yellow Robots
 			for _, robot := range packet.Detection.GetRobotsYellow() {
-				num_yellowrobots++
-				yellowrobots[robot.GetRobotId()] = robot
-				visible_in_vision_y[robot.GetRobotId()] = true
+				switch halfswitch_n {
+				case 0:
+					num_yellowrobots++
+					yellowrobots[robot.GetRobotId()] = robot
+					visible_in_vision_y[robot.GetRobotId()] = true
+
+				case 1:
+					if robot.GetX() > 0 {
+						num_yellowrobots++
+						yellowrobots[robot.GetRobotId()] = robot
+						visible_in_vision_y[robot.GetRobotId()] = true
+					}
+
+				case -1:
+					if robot.GetX() <= 0 {
+						num_yellowrobots++
+						yellowrobots[robot.GetRobotId()] = robot
+						visible_in_vision_y[robot.GetRobotId()] = true
+					}
+				}
 			}
 
 			for i := 0; i < 16; i++ {
@@ -414,7 +448,18 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 				PixelY:     proto.Float32(0.0),
 			}
 			if packet.Detection.GetBalls() != nil {
+
 				for _, fball := range packet.Detection.GetBalls() {
+					if halfswitch_n == 1 {
+						if fball.GetX() < 0 {
+							break
+						}
+					} else if halfswitch_n == -1 {
+						if fball.GetX() >= 0 {
+							break
+						}
+					}
+
 					var maxconf float32 = *maxconfball.Confidence
 					var conf float32 = *fball.Confidence
 
@@ -423,8 +468,9 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 					}
 				}
 
-				ball = maxconfball
-
+				if maxconfball != nil {
+					ball = maxconfball
+				}
 			}
 		}
 
@@ -991,11 +1037,12 @@ func main() {
 	var (
 		visionport = flag.Int("p", 10006, "Vision Multicast Port Number")
 		ourteam    = flag.String("t", "blue", "Our Team (blue or yellow)")
-		goalpos    = flag.String("g", "N", "Attack Direction Negative or Positive (N or P)")
+		goalpos    = flag.String("g", "N", "Attack Direction(Enemy goal) Negative or Positive (N or P)")
 		reportrate = flag.Uint("r", 16, "How often report to RACOON-AI? (milliseconds)")
 		debug      = flag.Bool("d", false, "Show All Send Packet")
 		simmode    = flag.Bool("s", false, "Simulation Mode (Emulate Ball Sensor)")
 		replay     = flag.Bool("replay", false, "Replay All Packet")
+		halfswitch = flag.String("c", "F", "Where to use (N, P, F) F to Full")
 	)
 
 	//OUR TEAM 0 = blue
@@ -1020,6 +1067,15 @@ func main() {
 		goalpos_n = 1
 	}
 
+	var halfswitch_n int
+	if *halfswitch == "N" {
+		halfswitch_n = -1
+	} else if *halfswitch == "P" {
+		halfswitch_n = 1
+	} else {
+		halfswitch_n = 0
+	}
+
 	chupdate := make(chan bool)
 	chserver := make(chan bool)
 	chvision := make(chan bool)
@@ -1029,7 +1085,7 @@ func main() {
 
 	go Update(chupdate)
 	go RunServer(chserver, *reportrate, ourteam_n, goalpos_n, *debug, *simmode)
-	go VisionReceive(chvision, *visionport, ourteam_n, goalpos_n, *simmode, *replay)
+	go VisionReceive(chvision, *visionport, ourteam_n, goalpos_n, *simmode, *replay, halfswitch_n)
 	go CheckVisionRobot(chvisrobot)
 	go FPSCounter(chfps)
 	go RefereeClient(chref)
