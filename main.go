@@ -7,19 +7,18 @@ import (
 	"log"
 	"math"
 	"net"
-	"os"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/Rione-SSL/RACOON-MW/proto/pb_gen"
-	"github.com/golang/protobuf/proto"
 	"github.com/rosshemsley/kalman"
 	"github.com/rosshemsley/kalman/models"
+	"google.golang.org/protobuf/proto"
 )
 
-//グローバル宣言
-//更新時のみ置き換えるようにする
+// グローバル宣言
+// 更新時のみ置き換えるようにする
 var balldetect [16]bool
 var visionwrapper [16]*pb_gen.SSL_WrapperPacket
 var visiondetection [16]*pb_gen.SSL_DetectionFrame
@@ -63,11 +62,6 @@ var fps float32
 var secperframe float32
 var isvisionrecv bool = false
 
-// These numbers control how much smoothing the model does.
-const observationNoise = 0.1 // entries for the diagonal of R_k
-//const initialVariance = 0.01  // entries for the diagonal of P_0
-const processVariance = 0.005 // entries for the diagonal of Q_k
-
 func Calc_degree_normalize(rad float32) float32 {
 	if rad > math.Pi {
 		rad -= 2 * math.Pi
@@ -94,6 +88,8 @@ func Calc_distance(x_1 float32, y_1 float32, x_2 float32, y_2 float32) float32 {
 	return dist
 }
 
+var robot_online_count [16]uint8
+
 func Update(chupdate chan bool) {
 	serverAddr := &net.UDPAddr{
 		IP:   net.ParseIP("224.5.23.2"),
@@ -116,6 +112,9 @@ func Update(chupdate chan bool) {
 		err = proto.Unmarshal(buf[0:n], packet)
 		CheckError(err)
 		balldetect[packet.GetRobotId()] = packet.GetInfrared()
+		if robot_online_count[packet.GetRobotId()] < 5 {
+			robot_online_count[packet.GetRobotId()] += 1
+		}
 		log.Printf("State change signal recived from %s ", addr)
 	}
 }
@@ -195,6 +194,7 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 	var t time.Time
 
 	var modelBallX *models.SimpleModel
+	var modelBallY *models.SimpleModel
 
 	modelBallX = models.NewSimpleModel(t, 0.0, models.SimpleModelConfig{
 		InitialVariance:     1.0,
@@ -202,8 +202,6 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 		ObservationVariance: 2.0,
 	})
 	filterBallX := kalman.NewKalmanFilter(modelBallX)
-
-	var modelBallY *models.SimpleModel
 
 	modelBallY = models.NewSimpleModel(t, 0.0, models.SimpleModelConfig{
 		InitialVariance:     1.0,
@@ -234,42 +232,16 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 	var before_unix_time int
 	var unixtime int
 
-	if replay {
-		log.Println("=====RECEIVING VIA DEBUG.TXT=====")
-		f, _ := os.Open("DEBUG.txt")
-		reader = bufio.NewReaderSize(f, 4096)
-		defer f.Close()
-	}
-
 	for i := 0; i < 60; i++ {
 
 		var n int
 		var addr *net.UDPAddr
 		var err error
-		if replay {
-			line, _, err = reader.ReadLine()
-			CheckError(err)
-			str = string(line)
-			strarr = strings.Split(str, ",")
-			if i == 0 {
-				unixtime, _ = strconv.Atoi(strarr[0])
-				before_unix_time, _ = strconv.Atoi(strarr[0])
-			} else {
-				before_unix_time = unixtime
-				unixtime, _ = strconv.Atoi(strarr[0])
-			}
-			time.Sleep(time.Duration(unixtime-before_unix_time) * time.Millisecond)
-		} else {
-			n, addr, err = serverConn.ReadFromUDP(buf)
-			CheckError(err)
-		}
+		n, addr, err = serverConn.ReadFromUDP(buf)
+		CheckError(err)
 
 		packet := &pb_gen.SSL_WrapperPacket{}
-		if replay {
-			err = proto.UnmarshalText(strarr[1], packet)
-		} else {
-			err = proto.Unmarshal(buf[0:n], packet)
-		}
+		err = proto.Unmarshal(buf[0:n], packet)
 
 		CheckError(err)
 
@@ -307,12 +279,7 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 			}
 
 			packet := &pb_gen.SSL_WrapperPacket{}
-			if replay {
-				//log.Println(strarr[1])
-				err = proto.UnmarshalText(strarr[1], packet)
-			} else {
-				err = proto.Unmarshal(buf[0:n], packet)
-			}
+			err = proto.Unmarshal(buf[0:n], packet)
 			CheckError(err)
 
 			visionwrapper[i] = packet
@@ -649,6 +616,45 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 	chvision <- true
 }
 
+func IMUReset(chimu chan bool, ourteam int) {
+	for {
+		for i := 0; i < 16; i++ {
+			robot_online[i] = true
+		}
+		if isvisionrecv {
+			var signal []*pb_gen.GrSim_Robot_Command
+
+			for i := 0; i < 16; i++ {
+				if robot_online[i] {
+					signal = append(signal, createIMUSignal(uint32(i), ourteam))
+				}
+			}
+
+			command := addIMUSignalToIMUSignals(signal)
+			packet := &pb_gen.GrSim_Packet{
+				Commands: command,
+			}
+			log.Println(packet)
+			marshalpacket, _ := proto.Marshal(packet)
+
+			for i := 0; i < 16; i++ {
+				if robot_online[i] {
+					ipv4 := "192.168.0." + strconv.Itoa(i+100)
+					port := "20011"
+					addr := ipv4 + ":" + port
+
+					log.Println("Send to:", addr)
+
+					conn, err := net.Dial("udp", addr)
+					CheckError(err)
+					conn.Write(marshalpacket)
+				}
+			}
+		}
+		time.Sleep(time.Millisecond * 30000)
+	}
+
+}
 func FPSCounter(chfps chan bool) {
 	for {
 		if framecounter != 0 {
@@ -669,6 +675,8 @@ func FPSCounter(chfps chan bool) {
 	}
 }
 
+var robot_online [16]bool
+
 func CheckVisionRobot(chvisrobot chan bool) {
 	for {
 		if isvisionrecv {
@@ -686,8 +694,62 @@ func CheckVisionRobot(chvisrobot chan bool) {
 				}
 			}
 		}
+		for i := 0; i < 16; i++ {
+			if robot_online_count[i] != 0 {
+				robot_online[i] = true
+				robot_online_count[i] -= 1
+			} else {
+				robot_online[i] = false
+			}
+		}
 		time.Sleep(1 * time.Second)
 	}
+}
+
+func createIMUSignal(i uint32, ourteam int) *pb_gen.GrSim_Robot_Command {
+	var robotid uint32 = uint32(i + 100)
+	var kickspeedx float32 = 0
+	var kickspeedz float32 = 0
+	var veltangent float32 = 0
+	var velnormal float32 = 0
+	var velangular float32 = bluerobots[i].GetOrientation()
+	if ourteam == 1 {
+		velangular = yellowrobots[i].GetOrientation()
+	}
+	var spinner bool = false
+	var wheelsspeed bool = false
+
+	pe := &pb_gen.GrSim_Robot_Command{
+		Id:          &robotid,
+		Kickspeedx:  &kickspeedx,
+		Kickspeedz:  &kickspeedz,
+		Veltangent:  &veltangent,
+		Velnormal:   &velnormal,
+		Velangular:  &velangular,
+		Spinner:     &spinner,
+		Wheelsspeed: &wheelsspeed,
+	}
+	return pe
+}
+
+func addIMUSignalToIMUSignals(imusignals []*pb_gen.GrSim_Robot_Command) *pb_gen.GrSim_Commands {
+	var timestamp float64 = float64(time.Now().UnixNano() / 1e6)
+	var isteamyellow bool = false
+
+	var ImuSignal []*pb_gen.GrSim_Robot_Command
+	for _, signal := range imusignals {
+		if signal != nil {
+			ImuSignal = append(ImuSignal, signal)
+		}
+	}
+
+	ImuSignals := &pb_gen.GrSim_Commands{
+		Timestamp:     &timestamp,
+		Isteamyellow:  &isteamyellow,
+		RobotCommands: ImuSignal,
+	}
+
+	return ImuSignals
 }
 
 func createRobotInfo(i int, ourteam int, simmode bool) *pb_gen.Robot_Infos {
@@ -1007,34 +1069,6 @@ func RunServer(chserver chan bool, reportrate uint, ourteam int, goalpose int, d
 	chserver <- true
 }
 
-func RunRecorder(chrecorder chan bool, port int) {
-
-	serverAddr := &net.UDPAddr{
-		IP:   net.ParseIP("224.5.23.2"),
-		Port: port,
-	}
-	serverConn, err := net.ListenMulticastUDP("udp", nil, serverAddr)
-	CheckError(err)
-	defer serverConn.Close()
-
-	buf := make([]byte, 2048)
-
-	f, _ := os.Create("./DEBUG.txt")
-
-	for {
-		n, _, err := serverConn.ReadFromUDP(buf)
-		CheckError(err)
-
-		packet := &pb_gen.SSL_WrapperPacket{}
-		err = proto.Unmarshal(buf[0:n], packet)
-		CheckError(err)
-
-		f.WriteString(strconv.Itoa(int(time.Now().UnixMilli())) + "," + packet.String() + "\n")
-	}
-
-	chrecorder <- true
-}
-
 func main() {
 
 	var (
@@ -1085,6 +1119,7 @@ func main() {
 	chref := make(chan bool)
 	chfps := make(chan bool)
 	chvisrobot := make(chan bool)
+	chimu := make(chan bool)
 
 	go Update(chupdate)
 	go RunServer(chserver, *reportrate, ourteam_n, goalpos_n, *debug, *simmode)
@@ -1092,17 +1127,15 @@ func main() {
 	go CheckVisionRobot(chvisrobot)
 	go FPSCounter(chfps)
 	go RefereeClient(chref)
-
-	if *debug {
-		chrecorder := make(chan bool)
-		go RunRecorder(chrecorder, *visionport)
-		<-chrecorder
-	}
+	go IMUReset(chimu, ourteam_n)
 
 	<-chupdate
 	<-chserver
 	<-chvision
 	<-chref
+	<-chfps
+	<-chvisrobot
+	<-chimu
 
 }
 
