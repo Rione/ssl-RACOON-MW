@@ -17,6 +17,8 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+var BALL_MOVING_THRESHOULD_SPEED float32 = 15.0
+
 // グローバル宣言
 // 更新時のみ置き換えるようにする
 var balldetect [16]bool
@@ -179,6 +181,8 @@ var enemy_difference_Theta [16]float32
 
 var ball_difference_X float32
 var ball_difference_Y float32
+
+var is_ball_moving bool
 
 func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmode bool, replay bool, halfswitch_n int) {
 	var pre_ball_X float32
@@ -505,6 +509,19 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 			} else {
 				time.Sleep(1 * time.Second)
 				fmt.Println("Observer: Waiting Vision Receiver To Complete...")
+			}
+
+			/////////////////////////////////////
+			//
+			//	BALL MOVING DIRECTION CALCULATION
+			//
+			/////////////////////////////////////
+
+			// check if ball is moving
+			if ball_speed > BALL_MOVING_THRESHOULD_SPEED {
+				is_ball_moving = true
+			} else {
+				is_ball_moving = false
 			}
 
 			var ourrobots [16]*pb_gen.SSL_DetectionRobot
@@ -941,6 +958,7 @@ func createOtherInfo(goalpos_n int32) *pb_gen.Other_Infos {
 		Secperframe:      &secperframe,
 		IsVisionRecv:     &isvisionrecv,
 		AttackDirection:  &goalpos_n,
+		IsBallMoving:     &is_ball_moving,
 	}
 	return pe
 }

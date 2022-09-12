@@ -170,6 +170,7 @@ message Other_Infos {
     required float secperframe = 4;
     required bool is_vision_recv = 5;
     required int32 attack_direction = 6;
+    required bool is_ball_moving = 7;
 }
 
 message RacoonMW_Packet {
