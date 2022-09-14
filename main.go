@@ -17,7 +17,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-var BALL_MOVING_THRESHOULD_SPEED float32 = 15.0
+var BALL_MOVING_THRESHOULD_SPEED float32 = 1000
 
 // グローバル宣言
 // 更新時のみ置き換えるようにする
@@ -91,6 +91,7 @@ func Calc_distance(x_1 float32, y_1 float32, x_2 float32, y_2 float32) float32 {
 }
 
 var robot_online_count [16]uint8
+var centercircleradius float32
 
 func Update(chupdate chan bool) {
 	serverAddr := &net.UDPAddr{
@@ -294,6 +295,7 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 			// Receive Geometry Data
 			if packet.Geometry != nil { //Geometryパケットが送られていたら
 				geometrydata = packet.Geometry
+				//log.Println(geometrydata)
 				var lgtlp1x, lgtlp1y, lgtlp2x float32
 				var lgblp2y float32
 				for _, line := range packet.Geometry.GetField().GetFieldLines() {
@@ -308,6 +310,11 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 				}
 				left_geo_goal_x = (lgtlp1x + lgtlp2x) * 0.5
 				left_geo_goal_y = (lgtlp1y + lgblp2y) * 0.5
+
+				//WARNING
+				// [0] may be not centercircle
+
+				centercircleradius = packet.Geometry.GetField().GetFieldArcs()[0].GetRadius()
 
 				//Invert
 				if goalpos == -1 {
@@ -523,6 +530,7 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 			} else {
 				is_ball_moving = false
 			}
+			//log.Println("ball_speed ", ball_speed)
 
 			var ourrobots [16]*pb_gen.SSL_DetectionRobot
 			var enemyrobots [16]*pb_gen.SSL_DetectionRobot
@@ -909,7 +917,7 @@ func createGeometryInfo() *pb_gen.Geometry_Info {
 		BoundaryWidth = geometrydata.Field.GetBoundaryWidth()
 		PenaltyAreaWidth = geometrydata.Field.GetPenaltyAreaWidth()
 		PenaltyAreaDepth = geometrydata.Field.GetPenaltyAreaDepth()
-		CenterCircleRadius = geometrydata.Field.GetCenterCircleRadius()
+		CenterCircleRadius = int32(centercircleradius)
 		LineThickness = geometrydata.Field.GetLineThickness()
 		GoalCenterToPenaltyMark = geometrydata.Field.GetGoalCenterToPenaltyMark()
 		GoalHeight = geometrydata.Field.GetGoalHeight()
@@ -1098,6 +1106,7 @@ func main() {
 		simmode    = flag.Bool("s", false, "Simulation Mode (Emulate Ball Sensor)")
 		replay     = flag.Bool("replay", false, "Replay All Packet")
 		halfswitch = flag.String("c", "F", "Where to use (N, P, F) F to Full")
+		// ballmovethreshold = flag.Float64("b", 1000, "Ball Detect Threshold (Default 1000")
 	)
 
 	//OUR TEAM 0 = blue
