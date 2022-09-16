@@ -627,7 +627,7 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 			/////////////////////////////////////
 			if simmode {
 				for i := 0; i < 16; i++ {
-					if distance_ball_robot[i]/1000 < 0.115 && radian_ball_robot[i]*180/math.Pi < 10 && radian_ball_robot[i]*180/math.Pi > -10 {
+					if distance_ball_robot[i]/1000 < 0.115 && radian_ball_robot[i]*180/math.Pi < 20 && radian_ball_robot[i]*180/math.Pi > -20 {
 						balldetect[i] = true
 					} else {
 						balldetect[i] = false
@@ -676,7 +676,7 @@ func IMUReset(chimu chan bool, ourteam int) {
 				}
 			}
 		}
-		time.Sleep(time.Millisecond * 30000)
+		time.Sleep(time.Millisecond * 5000)
 	}
 
 }
