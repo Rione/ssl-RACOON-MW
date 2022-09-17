@@ -19,6 +19,14 @@ import (
 
 var BALL_MOVING_THRESHOULD_SPEED float32 = 1000
 
+var NW_ROBOT_UPDATE_INTERFACE_NAME string = "en5"
+var NW_VISION_REFEREE_INTERFACE_NAME string = "en6"
+var NW_AI_IPADDR string = "127.0.0.1"
+var NW_AI_PORT string = "30011"
+var NW_REF_MAX_DATAGRAM_SIZE int = 8192 * 2
+
+var IMU_RESET_INTERVAL time.Duration = 5000 * time.Millisecond
+
 // グローバル宣言
 // 更新時のみ置き換えるようにする
 var balldetect [16]bool
@@ -95,12 +103,14 @@ var centercircleradius float32
 
 func Update(chupdate chan bool) {
 	serverAddr := &net.UDPAddr{
-		IP:   net.ParseIP("224.5.23.2"),
-		Port: 40000,
+		IP:   net.ParseIP("224.5.69.4"),
+		Port: 16941,
 	}
+	interfacename, _ := net.InterfaceByName(NW_ROBOT_UPDATE_INTERFACE_NAME)
 
-	interfacename, _ := net.InterfaceByName("en9")
-
+	if interfacename == nil {
+		log.Println("[ERROR] MW Robot Update Signal NW Interface Name is wrong! Trying system-default interface!")
+	}
 	serverConn, err := net.ListenMulticastUDP("udp", interfacename, serverAddr)
 	CheckError(err)
 	defer serverConn.Close()
@@ -131,13 +141,18 @@ func RefereeClient(chref chan bool) {
 		IP:   net.ParseIP("224.5.23.1"),
 		Port: 10003,
 	}
+	interfacename, _ := net.InterfaceByName(NW_VISION_REFEREE_INTERFACE_NAME)
+
+	if interfacename == nil {
+		log.Println("[ERROR] MW Referee Signal NW Interface Name is wrong! Trying system-default interface!")
+	}
 
 	log.Printf("Referee Client started.")
-	serverConn, err := net.ListenMulticastUDP("udp", nil, serverAddr)
+	serverConn, err := net.ListenMulticastUDP("udp", interfacename, serverAddr)
 	CheckError(err)
 	defer serverConn.Close()
 
-	buf := make([]byte, 2048)
+	buf := make([]byte, NW_REF_MAX_DATAGRAM_SIZE)
 	refcounter := 0
 
 	for {
@@ -225,11 +240,18 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 		IP:   net.ParseIP("224.5.23.2"),
 		Port: port,
 	}
+
+	interfacename, _ := net.InterfaceByName(NW_VISION_REFEREE_INTERFACE_NAME)
+
+	if interfacename == nil {
+		log.Println("[ERROR] MW Vision Signal NW Interface Name is wrong! Trying system-default interface!")
+	}
+
 	log.Printf("Receiving Vision Multicast at Port %d", port)
-	serverConn, _ := net.ListenMulticastUDP("udp", nil, serverAddr)
+	serverConn, _ := net.ListenMulticastUDP("udp", interfacename, serverAddr)
 	defer serverConn.Close()
 
-	buf := make([]byte, 2048)
+	buf := make([]byte, 4096)
 	var reader *bufio.Reader
 	var line []byte
 	var str string
@@ -659,7 +681,7 @@ func IMUReset(chimu chan bool, ourteam int) {
 			packet := &pb_gen.GrSim_Packet{
 				Commands: command,
 			}
-			log.Println(packet)
+			//log.Println(packet)
 			marshalpacket, _ := proto.Marshal(packet)
 
 			for i := 0; i < 16; i++ {
@@ -668,15 +690,13 @@ func IMUReset(chimu chan bool, ourteam int) {
 					port := "20011"
 					addr := ipv4 + ":" + port
 
-					log.Println("Send to:", addr)
-
 					conn, err := net.Dial("udp", addr)
 					CheckError(err)
 					conn.Write(marshalpacket)
 				}
 			}
 		}
-		time.Sleep(time.Millisecond * 5000)
+		time.Sleep(IMU_RESET_INTERVAL)
 	}
 
 }
@@ -1025,8 +1045,8 @@ func addEnemyInfoToEnemyInfos(enemyinfo [16]*pb_gen.Robot_Infos) []*pb_gen.Robot
 }
 
 func RunServer(chserver chan bool, reportrate uint, ourteam int, goalpose int, debug bool, simmode bool) {
-	ipv4 := "127.0.0.1"
-	port := "30011"
+	ipv4 := NW_AI_IPADDR
+	port := NW_AI_PORT
 	addr := ipv4 + ":" + port
 
 	log.Println("Send to:", addr)
