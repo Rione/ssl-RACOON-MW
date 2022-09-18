@@ -449,7 +449,6 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 			}
 			var is_ball_exists bool = false
 			if packet.Detection.GetBalls() != nil {
-
 				var usethisball bool
 				for _, fball := range packet.Detection.GetBalls() {
 					usethisball = true
@@ -473,7 +472,7 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 					}
 				}
 
-				if !is_ball_exists {
+				if is_ball_exists {
 					ball = maxconfball
 				}
 			}
