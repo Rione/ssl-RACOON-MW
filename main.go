@@ -1119,17 +1119,18 @@ func RunServer(chserver chan bool, reportrate uint, ourteam int, goalpose int, d
 func main() {
 
 	var (
-		visionport = flag.Int("p", 10006, "Vision Multicast Port Number")
-		ourteam    = flag.String("t", "blue", "Our Team (blue or yellow)")
-		goalpos    = flag.String("g", "N", "Attack Direction(Enemy goal) Negative or Positive (N or P)")
-		reportrate = flag.Uint("r", 16, "How often report to RACOON-AI? (milliseconds)")
-		debug      = flag.Bool("d", false, "Show All Send Packet")
-		simmode    = flag.Bool("s", false, "Simulation Mode (Emulate Ball Sensor)")
-		replay     = flag.Bool("replay", false, "Replay All Packet")
-		halfswitch = flag.String("c", "F", "Where to use (N, P, F) F to Full")
-		// ballmovethreshold = flag.Float64("b", 1000, "Ball Detect Threshold (Default 1000")
+		visionport        = flag.Int("p", 10006, "Vision Multicast Port Number")
+		ourteam           = flag.String("t", "blue", "Our Team (blue or yellow)")
+		goalpos           = flag.String("g", "N", "Attack Direction(Enemy goal) Negative or Positive (N or P)")
+		reportrate        = flag.Uint("r", 16, "How often report to RACOON-AI? (milliseconds)")
+		debug             = flag.Bool("d", false, "Show All Send Packet")
+		simmode           = flag.Bool("s", false, "Simulation Mode (Emulate Ball Sensor)")
+		replay            = flag.Bool("replay", false, "Replay All Packet")
+		halfswitch        = flag.String("c", "F", "Where to use (N, P, F) F to Full")
+		ballmovethreshold = flag.Float64("b", 1000, "Ball Detect Threshold (Default 1000")
+		nw_robot          = flag.String("rif", "none", "NW Robot Update Interface Name (ex. en0)")
+		nw_vision         = flag.String("vif", "none", "NW Vision and Referee receive Interface Name (ex. en1)")
 	)
-
 	//OUR TEAM 0 = blue
 	//OUR TEAM 1 = yellow
 
@@ -1159,6 +1160,18 @@ func main() {
 		halfswitch_n = 1
 	} else {
 		halfswitch_n = 0
+	}
+
+	if *nw_robot != "none" {
+		NW_ROBOT_UPDATE_INTERFACE_NAME = *nw_robot
+	}
+
+	if *nw_vision != "none" {
+		NW_VISION_REFEREE_INTERFACE_NAME = *nw_vision
+	}
+
+	if *ballmovethreshold != 1000 {
+		BALL_MOVING_THRESHOULD_SPEED = float32(*ballmovethreshold)
 	}
 
 	chupdate := make(chan bool)
