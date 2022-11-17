@@ -19,8 +19,8 @@ import (
 
 var BALL_MOVING_THRESHOULD_SPEED float32 = 1000
 
-var NW_ROBOT_UPDATE_INTERFACE_NAME string = "en5"
-var NW_VISION_REFEREE_INTERFACE_NAME string = "en6"
+var NW_ROBOT_UPDATE_INTERFACE_NAME string = "nil"
+var NW_VISION_REFEREE_INTERFACE_NAME string = "nil"
 var NW_AI_IPADDR string = "127.0.0.1"
 var NW_AI_PORT string = "30011"
 var NW_REF_MAX_DATAGRAM_SIZE int = 8192 * 2
@@ -103,13 +103,13 @@ var centercircleradius float32
 
 func Update(chupdate chan bool) {
 	serverAddr := &net.UDPAddr{
-		IP:   net.ParseIP("224.5.69.4"),
+		IP:   net.ParseIP("224.5.23.2"),
 		Port: 16941,
 	}
 	interfacename, _ := net.InterfaceByName(NW_ROBOT_UPDATE_INTERFACE_NAME)
 
 	if interfacename == nil {
-		log.Println("[ERROR] MW Robot Update Signal NW Interface Name is wrong! Trying system-default interface!")
+		log.Println("[WARNING] MW Robot Update Signal NW Interface Name is wrong! Trying system-default interface!")
 	}
 	serverConn, err := net.ListenMulticastUDP("udp", interfacename, serverAddr)
 	CheckError(err)
@@ -144,7 +144,7 @@ func RefereeClient(chref chan bool) {
 	interfacename, _ := net.InterfaceByName(NW_VISION_REFEREE_INTERFACE_NAME)
 
 	if interfacename == nil {
-		log.Println("[ERROR] MW Referee Signal NW Interface Name is wrong! Trying system-default interface!")
+		log.Println("[WARNING] MW Referee Signal NW Interface Name is wrong! Trying system-default interface!")
 	}
 
 	log.Printf("Referee Client started.")
@@ -244,7 +244,7 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 	interfacename, _ := net.InterfaceByName(NW_VISION_REFEREE_INTERFACE_NAME)
 
 	if interfacename == nil {
-		log.Println("[ERROR] MW Vision Signal NW Interface Name is wrong! Trying system-default interface!")
+		log.Println("[WARNING] MW Vision Signal NW Interface Name is wrong! Trying system-default interface!")
 	}
 
 	log.Printf("Receiving Vision Multicast at Port %d", port)
