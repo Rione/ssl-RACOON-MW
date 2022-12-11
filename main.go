@@ -103,7 +103,7 @@ var centercircleradius float32
 
 func Update(chupdate chan bool) {
 	serverAddr := &net.UDPAddr{
-		IP:   net.ParseIP("224.5.23.2"),
+		IP:   net.ParseIP("224.5.69.4"),
 		Port: 16941,
 	}
 	interfacename, _ := net.InterfaceByName(NW_ROBOT_UPDATE_INTERFACE_NAME)
