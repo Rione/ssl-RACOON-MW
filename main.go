@@ -32,6 +32,10 @@ var IMU_RESET_INTERVAL time.Duration = 5000 * time.Millisecond
 var balldetect [16]bool
 var visionwrapper [16]*pb_gen.SSL_WrapperPacket
 var visiondetection [16]*pb_gen.SSL_DetectionFrame
+
+var trackerwrapper [16]*pb_gen.TrackerWrapperPacket
+var trackerdetection [16]*pb_gen.TrackedFrame
+
 var geometrydata *pb_gen.SSL_GeometryData
 var left_geo_goal_x float32
 var left_geo_goal_y float32
@@ -42,8 +46,15 @@ var num_yellowrobots int
 var bluerobots [16]*pb_gen.SSL_DetectionRobot
 var yellowrobots [16]*pb_gen.SSL_DetectionRobot
 
+var trackedblue [16]*pb_gen.TrackedRobot
+var trackedyellow [16]*pb_gen.TrackedRobot
+
 var ref_command *pb_gen.Referee
 var ball *pb_gen.SSL_DetectionBall
+
+var trackedball *pb_gen.TrackedBall
+
+var only_use_tracker bool = false
 
 var maxcameras int
 
@@ -200,7 +211,7 @@ var ball_difference_Y float32
 
 var is_ball_moving bool
 
-func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmode bool, replay bool, halfswitch_n int) {
+func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmode bool, replay bool, halfswitch_n int, tracked bool) {
 	var pre_ball_X float32
 	var pre_ball_Y float32
 	var pre_robot_X [16]float32
@@ -240,6 +251,10 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 		IP:   net.ParseIP("224.5.23.2"),
 		Port: port,
 	}
+	serverAddrTrk := &net.UDPAddr{
+		IP:   net.ParseIP("224.5.23.2"),
+		Port: 10010,
+	}
 
 	interfacename, _ := net.InterfaceByName(NW_VISION_REFEREE_INTERFACE_NAME)
 
@@ -249,9 +264,14 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 
 	log.Printf("Receiving Vision Multicast at Port %d", port)
 	serverConn, _ := net.ListenMulticastUDP("udp", interfacename, serverAddr)
+	serverConnTrk, _ := net.ListenMulticastUDP("udp", interfacename, serverAddrTrk)
+	if tracked {
+		log.Printf("==========TRACKER FIRST MODE==========")
+	}
 	defer serverConn.Close()
 
 	buf := make([]byte, 4096)
+	buftrack := make([]byte, 4096)
 	var reader *bufio.Reader
 	var line []byte
 	var str string
@@ -285,11 +305,14 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 
 	log.Printf("MAX CAMERAS: %d", maxcameras)
 	log.Printf("Receive Loop and Send Start: Vision addr %s", serverAddr)
+	if tracked {
+		log.Printf("USING TRACKER: Tracker addr %s", serverAddrTrk)
+	}
 
 	for {
 		framecounter++
 		for i := 0; i < maxcameras; i++ {
-			var n int
+			var n, nt int
 			var err error
 			if replay {
 				line, _, err = reader.ReadLine()
@@ -301,16 +324,35 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 				unixtime, _ = strconv.Atoi(strarr[0])
 				time.Sleep(time.Duration(unixtime-before_unix_time) * time.Millisecond)
 			} else {
-				n, _, err = serverConn.ReadFromUDP(buf)
-				CheckError(err)
+				if only_use_tracker != true { // Geometry を受け取ったのちは、Visionを受け取らない
+					n, _, err = serverConn.ReadFromUDP(buf)
+					CheckError(err)
+				}
+				if tracked {
+					nt, _, err = serverConnTrk.ReadFromUDP(buftrack)
+					CheckError(err)
+				}
 			}
 
 			packet := &pb_gen.SSL_WrapperPacket{}
-			err = proto.Unmarshal(buf[0:n], packet)
-			CheckError(err)
 
-			visionwrapper[i] = packet
-			visiondetection[i] = packet.Detection
+			if only_use_tracker != true {
+				err = proto.Unmarshal(buf[0:n], packet)
+				CheckError(err)
+
+				visionwrapper[i] = packet
+				visiondetection[i] = packet.Detection
+			}
+
+			var trackedpacket *pb_gen.TrackerWrapperPacket
+			if tracked {
+				trackedpacket = &pb_gen.TrackerWrapperPacket{}
+				err = proto.Unmarshal(buftrack[0:nt], trackedpacket)
+				CheckError(err)
+
+				trackerwrapper[i] = trackedpacket
+				trackerdetection[i] = trackedpacket.TrackedFrame
+			}
 
 			//log.Printf("Vision signal reveived from %s", addr)
 
@@ -342,6 +384,11 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 				if goalpos == -1 {
 					left_geo_goal_x = left_geo_goal_x * -1
 				}
+
+				if tracked == true {
+					only_use_tracker = true
+					log.Println("=======GEOMETRY OK NOW SWITCH TO TRACKER=========")
+				}
 			}
 
 			var visible_in_vision_b [16]bool
@@ -353,50 +400,94 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 				visible_in_vision_b[i] = false
 				visible_in_vision_y[i] = false
 			}
-			// Get Blue Robots
-			for _, robot := range packet.Detection.GetRobotsBlue() {
-				switch halfswitch_n {
-				case 0:
-					num_bluerobots++
-					bluerobots[robot.GetRobotId()] = robot
-					visible_in_vision_b[robot.GetRobotId()] = true
 
-				case 1:
-					if robot.GetX() > 0 {
+			if tracked != true {
+				// Get Blue Robots
+				for _, robot := range packet.Detection.GetRobotsBlue() {
+					switch halfswitch_n {
+					case 0:
 						num_bluerobots++
 						bluerobots[robot.GetRobotId()] = robot
 						visible_in_vision_b[robot.GetRobotId()] = true
-					}
 
-				case -1:
-					if robot.GetX() <= 0 {
-						num_bluerobots++
-						bluerobots[robot.GetRobotId()] = robot
-						visible_in_vision_b[robot.GetRobotId()] = true
+					case 1:
+						if robot.GetX() > 0 {
+							num_bluerobots++
+							bluerobots[robot.GetRobotId()] = robot
+							visible_in_vision_b[robot.GetRobotId()] = true
+						}
+
+					case -1:
+						if robot.GetX() <= 0 {
+							num_bluerobots++
+							bluerobots[robot.GetRobotId()] = robot
+							visible_in_vision_b[robot.GetRobotId()] = true
+						}
 					}
 				}
-			}
 
-			// Get Yellow Robots
-			for _, robot := range packet.Detection.GetRobotsYellow() {
-				switch halfswitch_n {
-				case 0:
-					num_yellowrobots++
-					yellowrobots[robot.GetRobotId()] = robot
-					visible_in_vision_y[robot.GetRobotId()] = true
-
-				case 1:
-					if robot.GetX() > 0 {
+				// Get Yellow Robots
+				for _, robot := range packet.Detection.GetRobotsYellow() {
+					switch halfswitch_n {
+					case 0:
 						num_yellowrobots++
 						yellowrobots[robot.GetRobotId()] = robot
 						visible_in_vision_y[robot.GetRobotId()] = true
+
+					case 1:
+						if robot.GetX() > 0 {
+							num_yellowrobots++
+							yellowrobots[robot.GetRobotId()] = robot
+							visible_in_vision_y[robot.GetRobotId()] = true
+						}
+
+					case -1:
+						if robot.GetX() <= 0 {
+							num_yellowrobots++
+							yellowrobots[robot.GetRobotId()] = robot
+							visible_in_vision_y[robot.GetRobotId()] = true
+						}
 					}
+				}
+			} else { //Trackerを使う場合
+				for _, robot := range trackedpacket.TrackedFrame.GetRobots() {
+					switch halfswitch_n {
+					case 0:
+						if robot.RobotId.GetTeam() == 2 { //Blue
+							num_bluerobots++
+							trackedblue[robot.RobotId.GetId()] = robot
+							visible_in_vision_b[robot.RobotId.GetId()] = true
+						} else if robot.RobotId.GetTeam() == 1 { //Yellow
+							num_yellowrobots++
+							trackedyellow[robot.RobotId.GetId()] = robot
+							visible_in_vision_y[robot.RobotId.GetId()] = true
+						}
 
-				case -1:
-					if robot.GetX() <= 0 {
-						num_yellowrobots++
-						yellowrobots[robot.GetRobotId()] = robot
-						visible_in_vision_y[robot.GetRobotId()] = true
+					case 1:
+						if robot.Pos.GetX() > 0 {
+							if robot.RobotId.GetTeam() == 2 { //Blue
+								num_bluerobots++
+								trackedblue[robot.RobotId.GetId()] = robot
+								visible_in_vision_b[robot.RobotId.GetId()] = true
+							} else if robot.RobotId.GetTeam() == 1 { //Yellow
+								num_yellowrobots++
+								trackedyellow[robot.RobotId.GetId()] = robot
+								visible_in_vision_y[robot.RobotId.GetId()] = true
+							}
+						}
+
+					case -1:
+						if robot.Pos.GetX() <= 0 {
+							if robot.RobotId.GetTeam() == 2 { //Blue
+								num_bluerobots++
+								trackedblue[robot.RobotId.GetId()] = robot
+								visible_in_vision_b[robot.RobotId.GetId()] = true
+							} else if robot.RobotId.GetTeam() == 1 { //Yellow
+								num_yellowrobots++
+								trackedyellow[robot.RobotId.GetId()] = robot
+								visible_in_vision_y[robot.RobotId.GetId()] = true
+							}
+						}
 					}
 				}
 			}
@@ -440,42 +531,87 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 			}
 
 			// Get Most High Confidence ball
-			var maxconfball *pb_gen.SSL_DetectionBall = &pb_gen.SSL_DetectionBall{
-				Confidence: proto.Float32(0.0),
-				X:          proto.Float32(0.0),
-				Y:          proto.Float32(0.0),
-				PixelX:     proto.Float32(0.0),
-				PixelY:     proto.Float32(0.0),
-			}
-			var is_ball_exists bool = false
-			if packet.Detection.GetBalls() != nil {
-				var usethisball bool
-				for _, fball := range packet.Detection.GetBalls() {
-					usethisball = true
-					if halfswitch_n == 1 {
-						if fball.GetX() < 0 {
-							usethisball = false
+			if tracked != true { //Visionを使う場合
+				var maxconfball *pb_gen.SSL_DetectionBall = &pb_gen.SSL_DetectionBall{
+					Confidence: proto.Float32(0.0),
+					X:          proto.Float32(0.0),
+					Y:          proto.Float32(0.0),
+					PixelX:     proto.Float32(0.0),
+					PixelY:     proto.Float32(0.0),
+				}
+				var is_ball_exists bool = false
+				if packet.Detection.GetBalls() != nil {
+					var usethisball bool
+					for _, fball := range packet.Detection.GetBalls() {
+						usethisball = true
+						if halfswitch_n == 1 {
+							if fball.GetX() < 0 {
+								usethisball = false
+							}
+						} else if halfswitch_n == -1 {
+							if fball.GetX() >= 0 {
+								usethisball = false
+							}
 						}
-					} else if halfswitch_n == -1 {
-						if fball.GetX() >= 0 {
-							usethisball = false
+						if usethisball {
+							var maxconf float32 = *maxconfball.Confidence
+							var conf float32 = *fball.Confidence
+
+							if maxconf < conf {
+								maxconfball = fball
+							}
+							is_ball_exists = true
 						}
 					}
-					if usethisball {
-						var maxconf float32 = *maxconfball.Confidence
-						var conf float32 = *fball.Confidence
 
-						if maxconf < conf {
-							maxconfball = fball
-						}
-						is_ball_exists = true
+					if is_ball_exists {
+						ball = maxconfball
 					}
 				}
+			} else { //Trackerを使う場合
+				var maxconfball *pb_gen.TrackedBall = &pb_gen.TrackedBall{
+					Pos:        &pb_gen.Vector3{X: proto.Float32(0.0), Y: proto.Float32(0.0), Z: proto.Float32(0.0)},
+					Vel:        &pb_gen.Vector3{X: proto.Float32(0.0), Y: proto.Float32(0.0), Z: proto.Float32(0.0)},
+					Visibility: proto.Float32(0.0),
+				}
+				var is_ball_exists bool = false
+				if trackedpacket.TrackedFrame.GetBalls() != nil {
+					var usethisball bool
+					for _, fball := range trackedpacket.TrackedFrame.GetBalls() {
+						usethisball = true
+						if halfswitch_n == 1 {
+							if fball.GetPos().GetX() < 0 {
+								usethisball = false
+							}
+						} else if halfswitch_n == -1 {
+							if fball.GetPos().GetX() >= 0 {
+								usethisball = false
+							}
+						}
+						if usethisball {
+							var maxconf float32 = *maxconfball.Visibility
+							var conf float32 = fball.GetVisibility()
 
-				if is_ball_exists {
-					ball = maxconfball
+							if maxconf < conf {
+								maxconfball = fball
+							}
+							is_ball_exists = true
+						}
+					}
+
+					if is_ball_exists {
+						ball = &pb_gen.SSL_DetectionBall{
+							Confidence: proto.Float32(0.0),
+							X:          proto.Float32(maxconfball.GetPos().GetX() * 1000.0),
+							Y:          proto.Float32(maxconfball.GetPos().GetY() * 1000.0),
+							Z:          proto.Float32(maxconfball.GetPos().GetZ() * 1000.0),
+							PixelX:     proto.Float32(0.0),
+							PixelY:     proto.Float32(0.0),
+						}
+					}
 				}
 			}
+
 		}
 
 		if framecounter-pre_framecounter > 0 {
@@ -557,13 +693,28 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 
 			var ourrobots [16]*pb_gen.SSL_DetectionRobot
 			var enemyrobots [16]*pb_gen.SSL_DetectionRobot
-			if ourteam == 0 {
-				ourrobots = bluerobots
-				enemyrobots = yellowrobots
+
+			var trackedour [16]*pb_gen.TrackedRobot
+			var trackedenemy [16]*pb_gen.TrackedRobot
+
+			if tracked != true {
+				if ourteam == 0 {
+					ourrobots = bluerobots
+					enemyrobots = yellowrobots
+				} else {
+					ourrobots = yellowrobots
+					enemyrobots = bluerobots
+				}
 			} else {
-				ourrobots = yellowrobots
-				enemyrobots = bluerobots
+				if ourteam == 0 {
+					trackedour = trackedblue
+					trackedenemy = trackedyellow
+				} else {
+					trackedour = trackedyellow
+					trackedenemy = trackedblue
+				}
 			}
+
 			/////////////////////////////////////
 			//
 			//	OUR ROBOT STATUS CALCULATION
@@ -572,39 +723,73 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 			var rdX64 [16]float64
 			var rdY64 [16]float64
 
-			for _, robot := range ourrobots {
-				if robot != nil {
-					i := robot.GetRobotId()
+			if tracked != true {
+				for _, robot := range ourrobots {
+					if robot != nil {
+						i := robot.GetRobotId()
 
-					robot_difference_X[i] = pre_robot_X[i] - robot.GetX()
-					robot_difference_Y[i] = pre_robot_Y[i] - robot.GetY()
-					robot_difference_Theta[i] = pre_robot_Theta[i] - robot.GetOrientation()
+						robot_difference_X[i] = pre_robot_X[i] - robot.GetX()
+						robot_difference_Y[i] = pre_robot_Y[i] - robot.GetY()
+						robot_difference_Theta[i] = pre_robot_Theta[i] - robot.GetOrientation()
 
-					rdX64[i] = float64(robot_difference_X[i])
-					rdY64[i] = float64(robot_difference_Y[i])
+						rdX64[i] = float64(robot_difference_X[i])
+						rdY64[i] = float64(robot_difference_Y[i])
 
-					if robot_difference_Y[i] != 0 || robot_difference_X[i] != 0 {
-						robot_slope[i] = robot_difference_Y[i] / robot_difference_X[i]
-						robot_intercept[i] = robot.GetY() - (robot_slope[i] * robot.GetX())
-						robot_speed[i] = float32(math.Sqrt(math.Pow(rdX64[i], 2)+math.Pow(rdY64[i], 2)) / 0.016)
-					} else {
-						robot_slope[i] = 0.0
-						robot_intercept[i] = robot.GetY()
-						robot_speed[i] = 0.0
+						if robot_difference_Y[i] != 0 || robot_difference_X[i] != 0 {
+							robot_slope[i] = robot_difference_Y[i] / robot_difference_X[i]
+							robot_intercept[i] = robot.GetY() - (robot_slope[i] * robot.GetX())
+							robot_speed[i] = float32(math.Sqrt(math.Pow(rdX64[i], 2)+math.Pow(rdY64[i], 2)) / 0.016)
+						} else {
+							robot_slope[i] = 0.0
+							robot_intercept[i] = robot.GetY()
+							robot_speed[i] = 0.0
+						}
+
+						robot_angular_velocity[i] = robot_difference_Theta[i] / 0.016
+
+						pre_robot_X[i] = robot.GetX()
+						pre_robot_Y[i] = robot.GetY()
+						pre_robot_Theta[i] = robot.GetOrientation()
+
+						radian_ball_robot[i] = Calc_degree_normalize(Calc_degree(ball.GetX(), ball.GetY(), robot.GetX(), robot.GetY()) - robot.GetOrientation())
+						distance_ball_robot[i] = Calc_distance(ball.GetX(), ball.GetY(), robot.GetX(), robot.GetY())
+
 					}
+				}
+			} else {
+				for _, robot := range trackedour {
+					if robot != nil {
+						i := robot.RobotId.GetId()
 
-					robot_angular_velocity[i] = robot_difference_Theta[i] / 0.016
+						robot_difference_X[i] = pre_robot_X[i] - robot.Pos.GetX()
+						robot_difference_Y[i] = pre_robot_Y[i] - robot.Pos.GetY()
+						robot_difference_Theta[i] = pre_robot_Theta[i] - robot.GetOrientation()
 
-					pre_robot_X[i] = robot.GetX()
-					pre_robot_Y[i] = robot.GetY()
-					pre_robot_Theta[i] = robot.GetOrientation()
+						rdX64[i] = float64(robot_difference_X[i])
+						rdY64[i] = float64(robot_difference_Y[i])
 
-					radian_ball_robot[i] = Calc_degree_normalize(Calc_degree(ball.GetX(), ball.GetY(), robot.GetX(), robot.GetY()) - robot.GetOrientation())
-					distance_ball_robot[i] = Calc_distance(ball.GetX(), ball.GetY(), robot.GetX(), robot.GetY())
+						if robot_difference_Y[i] != 0 || robot_difference_X[i] != 0 {
+							robot_slope[i] = robot_difference_Y[i] / robot_difference_X[i]
+							robot_intercept[i] = robot.Pos.GetY() - (robot_slope[i] * robot.Pos.GetX())
+							robot_speed[i] = float32(math.Sqrt(math.Pow(rdX64[i], 2)+math.Pow(rdY64[i], 2)) / 0.016)
+						} else {
+							robot_slope[i] = 0.0
+							robot_intercept[i] = robot.Pos.GetY()
+							robot_speed[i] = 0.0
+						}
 
+						robot_angular_velocity[i] = robot_difference_Theta[i] / 0.016
+
+						pre_robot_X[i] = robot.Pos.GetX()
+						pre_robot_Y[i] = robot.Pos.GetY()
+						pre_robot_Theta[i] = robot.GetOrientation()
+
+						radian_ball_robot[i] = Calc_degree_normalize(Calc_degree(ball.GetX(), ball.GetY(), robot.Pos.GetX(), robot.Pos.GetY()) - robot.GetOrientation())
+						distance_ball_robot[i] = Calc_distance(ball.GetX(), ball.GetY(), robot.Pos.GetX(), robot.Pos.GetY())
+
+					}
 				}
 			}
-
 			/////////////////////////////////////
 			//
 			//	ENEMY ROBOT STATUS CALCULATION
@@ -613,35 +798,65 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 			var edX64 [16]float64
 			var edY64 [16]float64
 
-			for _, enemy := range enemyrobots {
-				if enemy != nil {
-					i := enemy.GetRobotId()
+			if tracked != true {
+				for _, enemy := range enemyrobots {
+					if enemy != nil {
+						i := enemy.GetRobotId()
 
-					enemy_difference_X[i] = pre_enemy_X[i] - enemy.GetX()
-					enemy_difference_Y[i] = pre_enemy_Y[i] - enemy.GetY()
-					enemy_difference_Theta[i] = pre_enemy_Theta[i] - enemy.GetOrientation()
+						enemy_difference_X[i] = pre_enemy_X[i] - enemy.GetX()
+						enemy_difference_Y[i] = pre_enemy_Y[i] - enemy.GetY()
+						enemy_difference_Theta[i] = pre_enemy_Theta[i] - enemy.GetOrientation()
 
-					edX64[i] = float64(enemy_difference_X[i])
-					edY64[i] = float64(enemy_difference_Y[i])
+						edX64[i] = float64(enemy_difference_X[i])
+						edY64[i] = float64(enemy_difference_Y[i])
 
-					if enemy_difference_Y[i] != 0 || enemy_difference_X[i] != 0 {
-						enemy_slope[i] = enemy_difference_Y[i] / enemy_difference_X[i]
-						enemy_intercept[i] = enemy.GetY() - (enemy_slope[i] * enemy.GetX())
-						enemy_speed[i] = float32(math.Sqrt(math.Pow(edX64[i], 2)+math.Pow(edY64[i], 2)) / 0.016)
-					} else {
-						enemy_slope[i] = 0.0
-						enemy_intercept[i] = enemy.GetY()
-						enemy_speed[i] = 0.0
+						if enemy_difference_Y[i] != 0 || enemy_difference_X[i] != 0 {
+							enemy_slope[i] = enemy_difference_Y[i] / enemy_difference_X[i]
+							enemy_intercept[i] = enemy.GetY() - (enemy_slope[i] * enemy.GetX())
+							enemy_speed[i] = float32(math.Sqrt(math.Pow(edX64[i], 2)+math.Pow(edY64[i], 2)) / 0.016)
+						} else {
+							enemy_slope[i] = 0.0
+							enemy_intercept[i] = enemy.GetY()
+							enemy_speed[i] = 0.0
+						}
+
+						enemy_angular_velocity[i] = enemy_difference_Theta[i] / 0.016
+
+						pre_enemy_X[i] = enemy.GetX()
+						pre_enemy_Y[i] = enemy.GetY()
+						pre_enemy_Theta[i] = enemy.GetOrientation()
 					}
+				}
+			} else {
+				for _, enemy := range trackedenemy {
+					if enemy != nil {
+						i := enemy.RobotId.GetId()
 
-					enemy_angular_velocity[i] = enemy_difference_Theta[i] / 0.016
+						enemy_difference_X[i] = pre_enemy_X[i] - enemy.Pos.GetX()
+						enemy_difference_Y[i] = pre_enemy_Y[i] - enemy.Pos.GetY()
+						enemy_difference_Theta[i] = pre_enemy_Theta[i] - enemy.GetOrientation()
 
-					pre_enemy_X[i] = enemy.GetX()
-					pre_enemy_Y[i] = enemy.GetY()
-					pre_enemy_Theta[i] = enemy.GetOrientation()
+						edX64[i] = float64(enemy_difference_X[i])
+						edY64[i] = float64(enemy_difference_Y[i])
+
+						if enemy_difference_Y[i] != 0 || enemy_difference_X[i] != 0 {
+							enemy_slope[i] = enemy_difference_Y[i] / enemy_difference_X[i]
+							enemy_intercept[i] = enemy.Pos.GetY() - (enemy_slope[i] * enemy.Pos.GetX())
+							enemy_speed[i] = float32(math.Sqrt(math.Pow(edX64[i], 2)+math.Pow(edY64[i], 2)) / 0.016)
+						} else {
+							enemy_slope[i] = 0.0
+							enemy_intercept[i] = enemy.Pos.GetY()
+							enemy_speed[i] = 0.0
+						}
+
+						enemy_angular_velocity[i] = enemy_difference_Theta[i] / 0.016
+
+						pre_enemy_X[i] = enemy.Pos.GetX()
+						pre_enemy_Y[i] = enemy.Pos.GetY()
+						pre_enemy_Theta[i] = enemy.GetOrientation()
+					}
 				}
 			}
-
 			/////////////////////////////////////
 			//
 			//	BALL STATUS CALCULATION
@@ -798,21 +1013,39 @@ func addIMUSignalToIMUSignals(imusignals []*pb_gen.GrSim_Robot_Command) *pb_gen.
 	return ImuSignals
 }
 
-func createRobotInfo(i int, ourteam int, simmode bool) *pb_gen.Robot_Infos {
-	var robotid uint32 = bluerobots[i].GetRobotId()
-	var x float32 = bluerobots[i].GetX()
-	var y float32 = bluerobots[i].GetY()
-	var theta float32 = bluerobots[i].GetOrientation()
+func createRobotInfo(i int, ourteam int, simmode bool, tracked bool) *pb_gen.Robot_Infos {
+	var robotid uint32
+	var x float32
+	var y float32
+	var theta float32
+	if tracked {
+		if ourteam == 1 {
+			robotid = trackedblue[i].RobotId.GetId()
+			x = trackedblue[i].Pos.GetX() * 1000
+			y = trackedblue[i].Pos.GetY() * 1000
+			theta = trackedblue[i].GetOrientation()
+		} else {
+			robotid = trackedyellow[i].RobotId.GetId()
+			x = trackedyellow[i].Pos.GetX() * 1000
+			y = trackedyellow[i].Pos.GetY() * 1000
+			theta = trackedyellow[i].GetOrientation()
+		}
+	} else {
+		if ourteam == 1 {
+			robotid = bluerobots[i].GetRobotId()
+			x = bluerobots[i].GetX()
+			y = bluerobots[i].GetY()
+			theta = bluerobots[i].GetOrientation()
+		} else {
+			robotid = yellowrobots[i].GetRobotId()
+			x = yellowrobots[i].GetX()
+			y = yellowrobots[i].GetY()
+			theta = yellowrobots[i].GetOrientation()
+		}
+	}
 	var diffx float32 = robot_difference_X[i]
 	var diffy float32 = robot_difference_Y[i]
 	var difftheta float32 = robot_difference_Theta[i]
-
-	if ourteam == 1 {
-		robotid = yellowrobots[i].GetRobotId()
-		x = yellowrobots[i].GetX()
-		y = yellowrobots[i].GetY()
-		theta = yellowrobots[i].GetOrientation()
-	}
 
 	var batt float32 = 12.15
 	var online bool = true
@@ -850,21 +1083,40 @@ func addRobotInfoToRobotInfos(robotinfo [16]*pb_gen.Robot_Infos) []*pb_gen.Robot
 	return RobotInfos
 }
 
-func createEnemyInfo(i int, ourteam int) *pb_gen.Robot_Infos {
+func createEnemyInfo(i int, ourteam int, tracked bool) *pb_gen.Robot_Infos {
 	if enemyrobot_is_visible[i] {
-		var robotid uint32 = yellowrobots[i].GetRobotId()
-		var x float32 = yellowrobots[i].GetX()
-		var y float32 = yellowrobots[i].GetY()
-		var theta float32 = yellowrobots[i].GetOrientation()
+		var robotid uint32
+		var x float32
+		var y float32
+		var theta float32
 		var diffx float32 = enemy_difference_X[i]
 		var diffy float32 = enemy_difference_Y[i]
 		var difftheta float32 = enemy_difference_Theta[i]
 
-		if ourteam == 1 {
-			robotid = bluerobots[i].GetRobotId()
-			x = bluerobots[i].GetX()
-			y = bluerobots[i].GetY()
-			theta = bluerobots[i].GetOrientation()
+		if tracked {
+			if ourteam == 1 {
+				robotid = trackedyellow[i].RobotId.GetId()
+				x = trackedyellow[i].Pos.GetX() * 1000
+				y = trackedyellow[i].Pos.GetY() * 1000
+				theta = trackedyellow[i].GetOrientation()
+			} else {
+				robotid = trackedblue[i].RobotId.GetId()
+				x = trackedblue[i].Pos.GetX() * 1000
+				y = trackedblue[i].Pos.GetY() * 1000
+				theta = trackedblue[i].GetOrientation()
+			}
+		} else {
+			if ourteam == 1 {
+				robotid = yellowrobots[i].GetRobotId()
+				x = yellowrobots[i].GetX()
+				y = yellowrobots[i].GetY()
+				theta = yellowrobots[i].GetOrientation()
+			} else {
+				robotid = bluerobots[i].GetRobotId()
+				x = bluerobots[i].GetX()
+				y = bluerobots[i].GetY()
+				theta = bluerobots[i].GetOrientation()
+			}
 		}
 
 		pe := &pb_gen.Robot_Infos{
@@ -891,6 +1143,7 @@ func createBallInfo() *pb_gen.Ball_Info {
 	var x float32 = ball.GetX()
 	var y float32 = ball.GetY()
 	var z float32 = ball.GetZ()
+
 	var sloperadian float32 = ball_slope_degree
 	var slope float32 = ball_slope
 	var intercept float32 = ball_intercept
@@ -1045,7 +1298,7 @@ func addEnemyInfoToEnemyInfos(enemyinfo [16]*pb_gen.Robot_Infos) []*pb_gen.Robot
 	return EnemyInfos
 }
 
-func RunServer(chserver chan bool, reportrate uint, ourteam int, goalpose int, debug bool, simmode bool) {
+func RunServer(chserver chan bool, reportrate uint, ourteam int, goalpose int, debug bool, simmode bool, tracked bool) {
 	ipv4 := NW_AI_IPADDR
 	port := NW_AI_PORT
 	addr := ipv4 + ":" + port
@@ -1063,19 +1316,41 @@ func RunServer(chserver chan bool, reportrate uint, ourteam int, goalpose int, d
 		var robot_infos [16]*pb_gen.Robot_Infos
 		var enemy_infos [16]*pb_gen.Robot_Infos
 
-		if ourteam == 0 {
-			for _, robot := range bluerobots {
-				robot_infos[robot.GetRobotId()] = createRobotInfo(int(robot.GetRobotId()), ourteam, simmode)
-			}
-			for _, enemy := range yellowrobots {
-				enemy_infos[enemy.GetRobotId()] = createEnemyInfo(int(enemy.GetRobotId()), ourteam)
+		if tracked {
+			if ourteam == 0 {
+				for _, robot := range trackedblue {
+					if robot != nil {
+						robot_infos[robot.RobotId.GetId()] = createRobotInfo(int(robot.RobotId.GetId()), ourteam, simmode, tracked)
+					}
+				}
+				for _, enemy := range trackedyellow {
+					if enemy != nil {
+						enemy_infos[enemy.RobotId.GetId()] = createEnemyInfo(int(enemy.RobotId.GetId()), ourteam, tracked)
+					}
+				}
+			} else {
+				for _, robot := range trackedyellow {
+					robot_infos[robot.RobotId.GetId()] = createRobotInfo(int(robot.RobotId.GetId()), ourteam, simmode, tracked)
+				}
+				for _, enemy := range trackedblue {
+					enemy_infos[enemy.RobotId.GetId()] = createEnemyInfo(int(enemy.RobotId.GetId()), ourteam, tracked)
+				}
 			}
 		} else {
-			for _, robot := range yellowrobots {
-				robot_infos[robot.GetRobotId()] = createRobotInfo(int(robot.GetRobotId()), ourteam, simmode)
-			}
-			for _, enemy := range bluerobots {
-				enemy_infos[enemy.GetRobotId()] = createEnemyInfo(int(enemy.GetRobotId()), ourteam)
+			if ourteam == 0 {
+				for _, robot := range bluerobots {
+					robot_infos[robot.GetRobotId()] = createRobotInfo(int(robot.GetRobotId()), ourteam, simmode, tracked)
+				}
+				for _, enemy := range yellowrobots {
+					enemy_infos[enemy.GetRobotId()] = createEnemyInfo(int(enemy.GetRobotId()), ourteam, tracked)
+				}
+			} else {
+				for _, robot := range yellowrobots {
+					robot_infos[robot.GetRobotId()] = createRobotInfo(int(robot.GetRobotId()), ourteam, simmode, tracked)
+				}
+				for _, enemy := range bluerobots {
+					enemy_infos[enemy.GetRobotId()] = createEnemyInfo(int(enemy.GetRobotId()), ourteam, tracked)
+				}
 			}
 		}
 
@@ -1130,6 +1405,7 @@ func main() {
 		ballmovethreshold = flag.Float64("b", 1000, "Ball Detect Threshold (Default 1000")
 		nw_robot          = flag.String("rif", "none", "NW Robot Update Interface Name (ex. en0)")
 		nw_vision         = flag.String("vif", "none", "NW Vision and Referee receive Interface Name (ex. en1)")
+		trackersource     = flag.Bool("ts", false, "Tracker Source (ex.true)")
 	)
 	//OUR TEAM 0 = blue
 	//OUR TEAM 1 = yellow
@@ -1183,8 +1459,8 @@ func main() {
 	chimu := make(chan bool)
 
 	go Update(chupdate)
-	go RunServer(chserver, *reportrate, ourteam_n, goalpos_n, *debug, *simmode)
-	go VisionReceive(chvision, *visionport, ourteam_n, goalpos_n, *simmode, *replay, halfswitch_n)
+	go RunServer(chserver, *reportrate, ourteam_n, goalpos_n, *debug, *simmode, *trackersource)
+	go VisionReceive(chvision, *visionport, ourteam_n, goalpos_n, *simmode, *replay, halfswitch_n, *trackersource)
 	go CheckVisionRobot(chvisrobot)
 	go FPSCounter(chfps)
 	go RefereeClient(chref)
