@@ -1330,10 +1330,14 @@ func RunServer(chserver chan bool, reportrate uint, ourteam int, goalpose int, d
 				}
 			} else {
 				for _, robot := range trackedyellow {
-					robot_infos[robot.RobotId.GetId()] = createRobotInfo(int(robot.RobotId.GetId()), ourteam, simmode, tracked)
+					if robot != nil {
+						robot_infos[robot.RobotId.GetId()] = createRobotInfo(int(robot.RobotId.GetId()), ourteam, simmode, tracked)
+					}
 				}
 				for _, enemy := range trackedblue {
-					enemy_infos[enemy.RobotId.GetId()] = createEnemyInfo(int(enemy.RobotId.GetId()), ourteam, tracked)
+					if enemy != nil {
+						enemy_infos[enemy.RobotId.GetId()] = createEnemyInfo(int(enemy.RobotId.GetId()), ourteam, tracked)
+					}
 				}
 			}
 		} else {
