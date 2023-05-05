@@ -599,8 +599,11 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 							is_ball_exists = true
 						}
 					}
+					//Simulatorの場合は、ボールの初期位置が(0,0)になっているので、消えた判定にしない
+					var is_ignore_vanished_ball bool = !simmode && (maxconfball.Pos.GetX() == 0 && maxconfball.Pos.GetY() == 0)
+					// log.Println("is_ignore_vanished_ball", is_ignore_vanished_ball, ball.GetX(), ball.GetY())
 
-					if is_ball_exists {
+					if is_ball_exists && !is_ignore_vanished_ball {
 						ball = &pb_gen.SSL_DetectionBall{
 							Confidence: proto.Float32(0.0),
 							X:          proto.Float32(maxconfball.Pos.GetX() * 1000.0),
