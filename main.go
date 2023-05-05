@@ -581,11 +581,11 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 					for _, fball := range trackedpacket.TrackedFrame.GetBalls() {
 						usethisball = true
 						if halfswitch_n == 1 {
-							if fball.GetPos().GetX() < 0 {
+							if fball.Pos.GetX() < 0 {
 								usethisball = false
 							}
 						} else if halfswitch_n == -1 {
-							if fball.GetPos().GetX() >= 0 {
+							if fball.Pos.GetX() >= 0 {
 								usethisball = false
 							}
 						}
@@ -593,7 +593,7 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 							var maxconf float32 = *maxconfball.Visibility
 							var conf float32 = fball.GetVisibility()
 
-							if maxconf < conf {
+							if maxconf <= conf {
 								maxconfball = fball
 							}
 							is_ball_exists = true
@@ -603,9 +603,9 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 					if is_ball_exists {
 						ball = &pb_gen.SSL_DetectionBall{
 							Confidence: proto.Float32(0.0),
-							X:          proto.Float32(maxconfball.GetPos().GetX() * 1000.0),
-							Y:          proto.Float32(maxconfball.GetPos().GetY() * 1000.0),
-							Z:          proto.Float32(maxconfball.GetPos().GetZ() * 1000.0),
+							X:          proto.Float32(maxconfball.Pos.GetX() * 1000.0),
+							Y:          proto.Float32(maxconfball.Pos.GetY() * 1000.0),
+							Z:          proto.Float32(maxconfball.Pos.GetZ() * 1000.0),
 							PixelX:     proto.Float32(0.0),
 							PixelY:     proto.Float32(0.0),
 						}
