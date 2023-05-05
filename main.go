@@ -453,11 +453,11 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 				for _, robot := range trackedpacket.TrackedFrame.GetRobots() {
 					switch halfswitch_n {
 					case 0:
-						if robot.RobotId.GetTeam() == 2 { //Blue
+						if robot.RobotId.GetTeam().Number() == 2 { //Blue
 							num_bluerobots++
 							trackedblue[robot.RobotId.GetId()] = robot
 							visible_in_vision_b[robot.RobotId.GetId()] = true
-						} else if robot.RobotId.GetTeam() == 1 { //Yellow
+						} else if robot.RobotId.GetTeam().Number() == 1 { //Yellow
 							num_yellowrobots++
 							trackedyellow[robot.RobotId.GetId()] = robot
 							visible_in_vision_y[robot.RobotId.GetId()] = true
@@ -1019,7 +1019,7 @@ func createRobotInfo(i int, ourteam int, simmode bool, tracked bool) *pb_gen.Rob
 	var y float32
 	var theta float32
 	if tracked {
-		if ourteam == 1 {
+		if ourteam == 0 {
 			robotid = trackedblue[i].RobotId.GetId()
 			x = trackedblue[i].Pos.GetX() * 1000
 			y = trackedblue[i].Pos.GetY() * 1000
@@ -1031,7 +1031,7 @@ func createRobotInfo(i int, ourteam int, simmode bool, tracked bool) *pb_gen.Rob
 			theta = trackedyellow[i].GetOrientation()
 		}
 	} else {
-		if ourteam == 1 {
+		if ourteam == 0 {
 			robotid = bluerobots[i].GetRobotId()
 			x = bluerobots[i].GetX()
 			y = bluerobots[i].GetY()
@@ -1094,7 +1094,7 @@ func createEnemyInfo(i int, ourteam int, tracked bool) *pb_gen.Robot_Infos {
 		var difftheta float32 = enemy_difference_Theta[i]
 
 		if tracked {
-			if ourteam == 1 {
+			if ourteam == 0 {
 				robotid = trackedyellow[i].RobotId.GetId()
 				x = trackedyellow[i].Pos.GetX() * 1000
 				y = trackedyellow[i].Pos.GetY() * 1000
@@ -1106,7 +1106,7 @@ func createEnemyInfo(i int, ourteam int, tracked bool) *pb_gen.Robot_Infos {
 				theta = trackedblue[i].GetOrientation()
 			}
 		} else {
-			if ourteam == 1 {
+			if ourteam == 0 {
 				robotid = yellowrobots[i].GetRobotId()
 				x = yellowrobots[i].GetX()
 				y = yellowrobots[i].GetY()
