@@ -27,6 +27,8 @@ var NW_REF_MAX_DATAGRAM_SIZE int = 8192 * 2
 
 var IMU_RESET_INTERVAL time.Duration = 5000 * time.Millisecond
 
+var MAX_AVAILABLE_TIMEOUTS int = 5
+
 // グローバル宣言
 // 更新時のみ置き換えるようにする
 var balldetect [16]bool
@@ -79,7 +81,7 @@ var distance_ball_robot [16]float32
 var radian_ball_robot [16]float32
 
 var framecounter int
-var fps float32
+var fps int
 var secperframe float32
 var isvisionrecv bool = false
 
@@ -129,7 +131,7 @@ func Update(chupdate chan bool) {
 	buf := make([]byte, 1024)
 
 	for {
-		n, addr, err := serverConn.ReadFromUDP(buf)
+		n, _, err := serverConn.ReadFromUDP(buf)
 		CheckError(err)
 
 		packet := &pb_gen.Robot_Status{}
@@ -139,7 +141,7 @@ func Update(chupdate chan bool) {
 		if robot_online_count[packet.GetRobotId()] < 5 {
 			robot_online_count[packet.GetRobotId()] += 1
 		}
-		log.Printf("State change signal recived from %s ", addr)
+		// log.Printf("State change signal recived from %s ", addr)
 	}
 }
 
@@ -279,6 +281,12 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 	var before_unix_time int
 	var unixtime int
 
+	//open robot_speed_file
+	// robot_speed_file, err := os.OpenFile("./robot_speed.txt", os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+
 	for i := 0; i < 60; i++ {
 
 		var n int
@@ -310,7 +318,6 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 	}
 
 	for {
-		framecounter++
 		for i := 0; i < maxcameras; i++ {
 			var n, nt int
 			var err error
@@ -617,6 +624,7 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 			}
 
 		}
+		framecounter++
 
 		if framecounter-pre_framecounter > 0 {
 
@@ -678,7 +686,7 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 
 			} else {
 				time.Sleep(1 * time.Second)
-				fmt.Println("Observer: Waiting Vision Receiver To Complete...")
+				fmt.Println("[FATAL] Ball is not detected. Please place the ball in the field and restart MW.")
 			}
 
 			/////////////////////////////////////
@@ -759,6 +767,8 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 						distance_ball_robot[i] = Calc_distance(ball.GetX(), ball.GetY(), robot.GetX(), robot.GetY())
 
 					}
+					//Print robot speed to text file
+					// fmt.Fprintf(robot_speed_file, "%f\n", robot_speed[6])
 				}
 			} else {
 				for _, robot := range trackedour {
@@ -883,10 +893,14 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 	chvision <- true
 }
 
-func IMUReset(chimu chan bool, ourteam int) {
+var imu_reset_time time.Time
+
+func IMUReset(chimu chan bool, ourteam int, simmode bool) {
 	for {
-		for i := 0; i < 16; i++ {
-			robot_online[i] = true
+		if simmode {
+			for i := 0; i < 16; i++ {
+				robot_online[i] = true
+			}
 		}
 		if isvisionrecv {
 			var signal []*pb_gen.GrSim_Robot_Command
@@ -913,27 +927,76 @@ func IMUReset(chimu chan bool, ourteam int) {
 					conn, err := net.Dial("udp", addr)
 					CheckError(err)
 					conn.Write(marshalpacket)
+					log.Println("IMU Reset Signal Sent to Robot ID: ", i)
 				}
 			}
+			imu_reset_time = time.Now()
 		}
 		time.Sleep(IMU_RESET_INTERVAL)
 	}
 
 }
-func FPSCounter(chfps chan bool) {
+func FPSCounter(chfps chan bool, ourteam int) {
+	imu_reset_time = time.Now()
 	for {
-		if framecounter != 0 {
+		//Calculate Online Robot IDs
+		var online_robot_id_str string
+		for i := 0; i < 16; i++ {
+			if robot_online[i] {
+				online_robot_id_str += fmt.Sprintf("%02d", i) + " "
+			} else {
+				online_robot_id_str += "-- "
+			}
+		}
+		if framecounter >= 1 {
 			isvisionrecv = true
-			fps = float32(framecounter)
+			fps = framecounter
 
 			framecounter = 0
 
-			secperframe = 1 / float32(fps)
+			//Time to second
+			log.Printf("Estimated FPS:  %d FPS // Last IMU Reset Time %s ago", fps, time.Duration(time.Since(imu_reset_time).Seconds())*time.Second)
+			log.Printf("Vision: %t, Connected Robots: %s", isvisionrecv, online_robot_id_str)
+			var our_yellows int
+			var our_reds int
 
-			log.Printf("Estimated FPS:  %f FPS, Interval %f ms", fps, secperframe)
+			if ref_command != nil {
+				if ourteam == 0 {
+					our_yellows = int(ref_command.Blue.GetYellowCards())
+					our_reds = int(ref_command.Blue.GetRedCards())
+
+					switch ref_command.GetCommand() {
+					case pb_gen.Referee_TIMEOUT_BLUE:
+						log.Printf("TIMEOUT %s Remain Second: %d, Remain Usable Times %d", ref_command.Blue.GetName(), ref_command.Blue.GetTimeoutTime()/1000000, ref_command.Blue.GetTimeouts())
+					case pb_gen.Referee_TIMEOUT_YELLOW:
+						log.Printf("TIMEOUT %s Remain Second: %d, Remain Usable Times %d", ref_command.Yellow.GetName(), ref_command.Yellow.GetTimeoutTime()/1000000, ref_command.Yellow.GetTimeouts())
+					case pb_gen.Referee_BALL_PLACEMENT_BLUE:
+						log.Printf("BALL_PLACEMENT_OUR %s ToPos(%.1f, %.1f) NowPos(%.1f, %.1f), Distance: %.1f", ref_command.Blue.GetName(), ref_command.DesignatedPosition.GetX(), ref_command.DesignatedPosition.GetY(), ball.GetX(), ball.GetY(), math.Sqrt(math.Pow(float64(ref_command.DesignatedPosition.GetX()-ball.GetX()), 2)+math.Pow(float64(ref_command.DesignatedPosition.GetY()-ball.GetY()), 2)))
+					default:
+						log.Printf("Current Referee Command: %s, Our Yellow Cards: %d, Our Red Cards: %d", ref_command.GetCommand().String(), our_yellows, our_reds)
+					}
+					// log.Println(ref_command.String())
+				} else {
+					our_yellows = int(ref_command.Yellow.GetYellowCards())
+					our_reds = int(ref_command.Yellow.GetRedCards())
+
+					switch ref_command.GetCommand() {
+					case pb_gen.Referee_TIMEOUT_BLUE:
+						log.Printf("TIMEOUT %s Remain Second: %d, Remain Usable Times %d", ref_command.Blue.GetName(), ref_command.Blue.GetTimeoutTime()/1000000, ref_command.Blue.GetTimeouts())
+					case pb_gen.Referee_TIMEOUT_YELLOW:
+						log.Printf("TIMEOUT %s Remain Second: %d, Remain Usable Times %d", ref_command.Yellow.GetName(), ref_command.Yellow.GetTimeoutTime()/1000000, ref_command.Yellow.GetTimeouts())
+					case pb_gen.Referee_BALL_PLACEMENT_YELLOW:
+						log.Printf("BALL_PLACEMENT_OUR %s ToPos(%.1f, %.1f) NowPos(%.1f, %.1f), Distance: %.1f", ref_command.Yellow.GetName(), ref_command.DesignatedPosition.GetX(), ref_command.DesignatedPosition.GetY(), ball.GetX(), ball.GetY(), math.Sqrt(math.Pow(float64(ref_command.DesignatedPosition.GetX()-ball.GetX()), 2)+math.Pow(float64(ref_command.DesignatedPosition.GetY()-ball.GetY()), 2)))
+					default:
+						log.Printf("Current Referee Command: %s, Our Yellow Cards: %d, Our Red Cards: %d", ref_command.GetCommand().String(), our_yellows, our_reds)
+					}
+				}
+			}
+
 		} else {
 			isvisionrecv = false
 			secperframe = 100000
+			log.Printf("Vision: %t, Connected Robots: %s", isvisionrecv, online_robot_id_str)
 		}
 
 		time.Sleep(1 * time.Second)
@@ -1470,9 +1533,9 @@ func main() {
 	go RunServer(chserver, *reportrate, ourteam_n, goalpos_n, *debug, *simmode, *trackersource)
 	go VisionReceive(chvision, *visionport, ourteam_n, goalpos_n, *simmode, *replay, halfswitch_n, *trackersource)
 	go CheckVisionRobot(chvisrobot)
-	go FPSCounter(chfps)
+	go FPSCounter(chfps, ourteam_n)
 	go RefereeClient(chref)
-	go IMUReset(chimu, ourteam_n)
+	go IMUReset(chimu, ourteam_n, *simmode)
 
 	<-chupdate
 	<-chserver
