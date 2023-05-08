@@ -992,7 +992,7 @@ func FPSCounter(chfps chan bool, ourteam int) {
 					}
 				}
 			}
-			secperframe = 1/fps
+			secperframe = 1/float32(fps)
 
 		} else {
 			isvisionrecv = false
