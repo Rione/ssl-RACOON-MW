@@ -668,7 +668,7 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 					ball_slope = ball_difference_Y / ball_difference_X
 					bdX64 := float64(ball_difference_X)
 					bdY64 := float64(ball_difference_Y)
-					ball_slope_degree = float32(math.Atan2(bdX64, bdY64))
+					ball_slope_degree = float32(math.Atan2(bdY64, bdX64))
 					ball_intercept = ball_Y - (ball_slope * ball_X)
 					ball_speed = float32(math.Sqrt(math.Pow(bdX64, 2)+math.Pow(bdY64, 2)) / 0.016)
 				} else {
@@ -740,9 +740,9 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 					if robot != nil {
 						i := robot.GetRobotId()
 
-						robot_difference_X[i] = pre_robot_X[i] - robot.GetX()
-						robot_difference_Y[i] = pre_robot_Y[i] - robot.GetY()
-						robot_difference_Theta[i] = pre_robot_Theta[i] - robot.GetOrientation()
+						robot_difference_X[i] = robot.GetX() - pre_robot_X[i]
+						robot_difference_Y[i] = robot.GetY() - pre_robot_Y[i]
+						robot_difference_Theta[i] = robot.GetOrientation() - pre_robot_Theta[i]
 
 						rdX64[i] = float64(robot_difference_X[i])
 						rdY64[i] = float64(robot_difference_Y[i])
@@ -775,9 +775,9 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 					if robot != nil {
 						i := robot.RobotId.GetId()
 
-						robot_difference_X[i] = pre_robot_X[i] - robot.Pos.GetX()*1000
-						robot_difference_Y[i] = pre_robot_Y[i] - robot.Pos.GetY()*1000
-						robot_difference_Theta[i] = pre_robot_Theta[i] - robot.GetOrientation()
+						robot_difference_X[i] = robot.Pos.GetX()*1000 - pre_robot_X[i]
+						robot_difference_Y[i] = robot.Pos.GetY()*1000 - pre_robot_Y[i]
+						robot_difference_Theta[i] = robot.GetOrientation() - pre_robot_Theta[i]
 
 						rdX64[i] = float64(robot_difference_X[i])
 						rdY64[i] = float64(robot_difference_Y[i])
@@ -817,9 +817,9 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 					if enemy != nil {
 						i := enemy.GetRobotId()
 
-						enemy_difference_X[i] = pre_enemy_X[i] - enemy.GetX()
-						enemy_difference_Y[i] = pre_enemy_Y[i] - enemy.GetY()
-						enemy_difference_Theta[i] = pre_enemy_Theta[i] - enemy.GetOrientation()
+						enemy_difference_X[i] = enemy.GetX() - pre_enemy_X[i]
+						enemy_difference_Y[i] = enemy.GetY() - pre_enemy_Y[i]
+						enemy_difference_Theta[i] = enemy.GetOrientation() - pre_enemy_Theta[i]
 
 						edX64[i] = float64(enemy_difference_X[i])
 						edY64[i] = float64(enemy_difference_Y[i])
@@ -846,9 +846,9 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 					if enemy != nil {
 						i := enemy.RobotId.GetId()
 
-						enemy_difference_X[i] = pre_enemy_X[i] - enemy.Pos.GetX()*1000
-						enemy_difference_Y[i] = pre_enemy_Y[i] - enemy.Pos.GetY()*1000
-						enemy_difference_Theta[i] = pre_enemy_Theta[i] - enemy.GetOrientation()
+						enemy_difference_X[i] = enemy.Pos.GetX()*1000 - pre_enemy_X[i]
+						enemy_difference_Y[i] = enemy.Pos.GetY()*1000 - pre_enemy_Y[i]
+						enemy_difference_Theta[i] = enemy.GetOrientation() - pre_enemy_Theta[i]
 
 						edX64[i] = float64(enemy_difference_X[i])
 						edY64[i] = float64(enemy_difference_Y[i])
