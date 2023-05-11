@@ -213,6 +213,9 @@ var ball_difference_Y float32
 
 var is_ball_moving bool
 
+var filtered_robot_x [16]float32
+var filtered_robot_y [16]float32
+
 func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmode bool, replay bool, halfswitch_n int, tracked bool) {
 	var pre_ball_X float32
 	var pre_ball_Y float32
@@ -242,6 +245,28 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 		ObservationVariance: 2.0,
 	})
 	filterBallY := kalman.NewKalmanFilter(modelBallY)
+
+	var modelRobotX [16]*models.SimpleModel
+	var modelRobotY [16]*models.SimpleModel
+
+	var filterRobotX [16]*kalman.KalmanFilter
+	var filterRobotY [16]*kalman.KalmanFilter
+
+	for i := 0; i < 16; i++ {
+		modelRobotX[i] = models.NewSimpleModel(t, 0.0, models.SimpleModelConfig{
+			InitialVariance:     1.0,
+			ProcessVariance:     2,
+			ObservationVariance: 2.0,
+		})
+		filterRobotX[i] = kalman.NewKalmanFilter(modelRobotX[i])
+
+		modelRobotY[i] = models.NewSimpleModel(t, 0.0, models.SimpleModelConfig{
+			InitialVariance:     1.0,
+			ProcessVariance:     2,
+			ObservationVariance: 2.0,
+		})
+		filterRobotY[i] = kalman.NewKalmanFilter(modelRobotY[i])
+	}
 
 	//f, _ := os.Create("./DEBUG2.txt")
 
@@ -740,6 +765,19 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 					if robot != nil {
 						i := robot.GetRobotId()
 
+						//Kalman Filter
+						err := filterRobotX[i].Update(t, modelRobotX[i].NewMeasurement(float64(robot.GetX())))
+						if err != nil {
+							log.Println(err)
+						}
+						err = filterRobotY[i].Update(t, modelRobotY[i].NewMeasurement(float64(robot.GetY())))
+						if err != nil {
+							log.Println(err)
+						}
+
+						filtered_robot_x[i] = float32(modelRobotX[i].Value(filterRobotX[i].State()))
+						filtered_robot_y[i] = float32(modelRobotY[i].Value(filterRobotY[i].State()))
+
 						robot_difference_X[i] = robot.GetX() - pre_robot_X[i]
 						robot_difference_Y[i] = robot.GetY() - pre_robot_Y[i]
 						robot_difference_Theta[i] = robot.GetOrientation() - pre_robot_Theta[i]
@@ -992,7 +1030,7 @@ func FPSCounter(chfps chan bool, ourteam int) {
 					}
 				}
 			}
-			secperframe = 1/float32(fps)
+			secperframe = 1 / float32(fps)
 
 		} else {
 			isvisionrecv = false
@@ -1101,13 +1139,17 @@ func createRobotInfo(i int, ourteam int, simmode bool, tracked bool) *pb_gen.Rob
 	} else {
 		if ourteam == 0 {
 			robotid = bluerobots[i].GetRobotId()
-			x = bluerobots[i].GetX()
-			y = bluerobots[i].GetY()
+			// x = bluerobots[i].GetX()
+			x = filtered_robot_x[i]
+			// y = bluerobots[i].GetY()
+			y = filtered_robot_y[i]
 			theta = bluerobots[i].GetOrientation()
 		} else {
 			robotid = yellowrobots[i].GetRobotId()
-			x = yellowrobots[i].GetX()
-			y = yellowrobots[i].GetY()
+			// x = yellowrobots[i].GetX()
+			x = filtered_robot_x[i]
+			// y = yellowrobots[i].GetY()
+			y = filtered_robot_y[i]
 			theta = yellowrobots[i].GetOrientation()
 		}
 	}
