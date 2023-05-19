@@ -216,6 +216,9 @@ var is_ball_moving bool
 var filtered_robot_x [16]float32
 var filtered_robot_y [16]float32
 
+var ball_x_history []float32
+var ball_y_history []float32
+
 func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmode bool, replay bool, halfswitch_n int, tracked bool) {
 	var pre_ball_X float32
 	var pre_ball_Y float32
@@ -238,6 +241,8 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 		ObservationVariance: 2.0,
 	})
 	filterBallX := kalman.NewKalmanFilter(modelBallX)
+	//KalmanSmoother
+	// smoothedBallX := kalman.NewKalmanSmoother(modelBallX)
 
 	modelBallY = models.NewSimpleModel(t, 0.0, models.SimpleModelConfig{
 		InitialVariance:     1.0,
@@ -245,6 +250,7 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 		ObservationVariance: 2.0,
 	})
 	filterBallY := kalman.NewKalmanFilter(modelBallY)
+	// smoothedBallY := kalman.NewKalmanSmoother(modelBallX)
 
 	var modelRobotX [16]*models.SimpleModel
 	var modelRobotY [16]*models.SimpleModel
@@ -306,8 +312,8 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 	var before_unix_time int
 	var unixtime int
 
-	//open robot_speed_file
-	// robot_speed_file, err := os.OpenFile("./robot_speed.txt", os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+	// open robot_speed_file
+	// robot_speed_file, err := os.OpenFile("./test.txt", os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 	// if err != nil {
 	// 	log.Fatal(err)
 	// }
@@ -659,17 +665,52 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 			//
 			/////////////////////////////////////
 			if ball != nil {
+				//if ball_x_history is too long, remove first element
+				if len(ball_x_history) > 5 {
+					ball_x_history = ball_x_history[1:]
+				}
+				//append ball x history
+				ball_x_history = append(ball_x_history, ball.GetX())
+
 				t = t.Add(time.Duration(secperframe * 1000 * float32(time.Millisecond)))
 				err := filterBallX.Update(t, modelBallX.NewMeasurement(float64(ball.GetX())))
-
 				if err != nil {
 					log.Println(err)
 				}
+				mm_x := make([]*kalman.MeasurementAtTime, len(ball_x_history))
+				for i, v := range ball_x_history {
+					mm_x[i] = kalman.NewMeasurementAtTime(t, modelBallX.NewMeasurement(float64(v)))
+				}
+				smoothBallX_states, err := kalman.NewKalmanSmoother(modelBallX).Smooth(mm_x...)
+
+				//if ball_x_history is too long, remove first element
+				if len(ball_y_history) > 5 {
+					ball_y_history = ball_y_history[1:]
+				}
+				//append ball x history
+				ball_y_history = append(ball_y_history, ball.GetY())
 
 				err = filterBallY.Update(t, modelBallY.NewMeasurement(float64(ball.GetY())))
 				if err != nil {
 					log.Println(err)
 				}
+
+				mm_y := make([]*kalman.MeasurementAtTime, len(ball_x_history))
+				for i, v := range ball_y_history {
+					mm_y[i] = kalman.NewMeasurementAtTime(t, modelBallY.NewMeasurement(float64(v)))
+				}
+				// smoothBallY_states, err := kalman.NewKalmanSmoother(modelBallY).Smooth(mm_y...)
+
+				//smoothBallX_states の 4番目のsを取得する modelBallX.Value(smoothBallX_states[3].State)
+
+				if len(smoothBallX_states) >= 4 {
+					// robot_speed_fileに書き込み
+					// log.Println("smoothBallX_states", smoothBallX_states)
+					// robot_speed_file.WriteString(fmt.Sprintf("%f %f %f\n", ball.GetX(), modelBallX.Value(filterBallX.State()), modelBallX.Value(smoothBallX_states[1].State)))
+				}
+
+				// log.Println("smoothBallX_states", smoothBallX_states)
+				// log.Println("smoothBallY_states", smoothBallY_states)
 				//fmt.Printf("X: before: %f, filtered value: %f\n", ball.GetX(), modelBallX.Value(filterBallX.State()))
 				//fmt.Printf("Y: before: %f, filtered value: %f\n", ball.GetY(), modelBallY.Value(filterBallY.State()))
 				filtered_ball_x = float32(modelBallX.Value(filterBallX.State()))
@@ -1139,17 +1180,17 @@ func createRobotInfo(i int, ourteam int, simmode bool, tracked bool) *pb_gen.Rob
 	} else {
 		if ourteam == 0 {
 			robotid = bluerobots[i].GetRobotId()
-			// x = bluerobots[i].GetX()
-			x = filtered_robot_x[i]
-			// y = bluerobots[i].GetY()
-			y = filtered_robot_y[i]
+			x = bluerobots[i].GetX()
+			// x = filtered_robot_x[i]
+			y = bluerobots[i].GetY()
+			// y = filtered_robot_y[i]
 			theta = bluerobots[i].GetOrientation()
 		} else {
 			robotid = yellowrobots[i].GetRobotId()
-			// x = yellowrobots[i].GetX()
-			x = filtered_robot_x[i]
-			// y = yellowrobots[i].GetY()
-			y = filtered_robot_y[i]
+			x = yellowrobots[i].GetX()
+			// x = filtered_robot_x[i]
+			y = yellowrobots[i].GetY()
+			// y = filtered_robot_y[i]
 			theta = yellowrobots[i].GetOrientation()
 		}
 	}
