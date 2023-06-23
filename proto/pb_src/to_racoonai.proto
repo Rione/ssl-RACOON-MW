@@ -163,6 +163,11 @@ message Referee_Info {
     optional float ball_placement_y = 8;
 }
 
+message RobotIP_Infos {
+    required uint32 robot_id = 1;
+    required string ip = 2;
+}
+
 message Other_Infos {
     required int32 num_of_cameras = 1;
     required int32 num_of_our_robots = 2;
@@ -179,5 +184,6 @@ message RacoonMW_Packet {
     required Geometry_Info geometry = 3;
     required Ball_Info ball = 4;
     required Referee_Info referee = 5;
-    required Other_Infos info = 6;
+    repeated RobotIP_Infos robot_ips = 6;
+    required Other_Infos info = 7;
 }

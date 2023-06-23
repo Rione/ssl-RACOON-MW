@@ -113,6 +113,7 @@ func Calc_distance(x_1 float32, y_1 float32, x_2 float32, y_2 float32) float32 {
 
 var robot_online_count [16]uint8
 var centercircleradius float32
+var robot_ipaddr [16]string
 
 func Update(chupdate chan bool) {
 	serverAddr := &net.UDPAddr{
@@ -131,7 +132,7 @@ func Update(chupdate chan bool) {
 	buf := make([]byte, 1024)
 
 	for {
-		n, _, err := serverConn.ReadFromUDP(buf)
+		n, addr, err := serverConn.ReadFromUDP(buf)
 		CheckError(err)
 
 		packet := &pb_gen.Robot_Status{}
@@ -141,6 +142,12 @@ func Update(chupdate chan bool) {
 		if robot_online_count[packet.GetRobotId()] < 5 {
 			robot_online_count[packet.GetRobotId()] += 1
 		}
+		//ロボットIDとIPアドレスの対応付け
+		if robot_ipaddr[packet.GetRobotId()] == "" {
+			robot_ipaddr[packet.GetRobotId()] = addr.IP.String()
+			log.Println("Robot ID", packet.GetRobotId(), "is", addr.IP.String())
+		}
+
 		// log.Printf("State change signal recived from %s ", addr)
 	}
 }
@@ -905,6 +912,7 @@ func CheckVisionRobot(chvisrobot chan bool) {
 				robot_online_count[i] -= 1
 			} else {
 				robot_online[i] = false
+				robot_ipaddr[i] = ""
 			}
 		}
 		time.Sleep(1 * time.Second)
@@ -1003,6 +1011,18 @@ func createRobotInfo(i int, ourteam int, simmode bool) *pb_gen.Robot_Infos {
 		BatteryVoltage:    &batt,
 	}
 	return pe
+}
+
+func addRobotIpToRobotIps(robotip [16]*pb_gen.RobotIP_Infos) []*pb_gen.RobotIP_Infos {
+	RobotIps := []*pb_gen.RobotIP_Infos{}
+
+	for _, robot := range robotip {
+		if robot != nil {
+			RobotIps = append(RobotIps, robot)
+		}
+	}
+
+	return RobotIps
 }
 
 func addRobotInfoToRobotInfos(robotinfo [16]*pb_gen.Robot_Infos) []*pb_gen.Robot_Infos {
@@ -1218,6 +1238,18 @@ func addEnemyInfoToEnemyInfos(enemyinfo [16]*pb_gen.Robot_Infos) []*pb_gen.Robot
 	return EnemyInfos
 }
 
+func addRobotIPInfoToRobotIPInfos(robotipinfo [16]*pb_gen.RobotIP_Infos) []*pb_gen.RobotIP_Infos {
+	RobotIPInfos := []*pb_gen.RobotIP_Infos{}
+
+	for _, robotip := range robotipinfo {
+		if robotip != nil {
+			RobotIPInfos = append(RobotIPInfos, robotip)
+		}
+	}
+
+	return RobotIPInfos
+}
+
 func RunServer(chserver chan bool, reportrate uint, ourteam int, goalpose int, debug bool, simmode bool) {
 	ipv4 := NW_AI_IPADDR
 	port := NW_AI_PORT
@@ -1235,6 +1267,7 @@ func RunServer(chserver chan bool, reportrate uint, ourteam int, goalpose int, d
 
 		var robot_infos [16]*pb_gen.Robot_Infos
 		var enemy_infos [16]*pb_gen.Robot_Infos
+		var robotip_infos [16]*pb_gen.RobotIP_Infos
 
 		if ourteam == 0 {
 			for _, robot := range bluerobots {
@@ -1252,11 +1285,25 @@ func RunServer(chserver chan bool, reportrate uint, ourteam int, goalpose int, d
 			}
 		}
 
+		//Robot IP
+		for i, ipaddr := range robot_ipaddr {
+			if ipaddr != "" {
+				idtouint32 := uint32(i)
+				ip := ipaddr
+				robotip_infos[i] = &pb_gen.RobotIP_Infos{
+					RobotId: &idtouint32,
+					Ip:      &ip,
+				}
+			}
+		}
+
 		RobotInfos := addRobotInfoToRobotInfos(robot_infos)
 
 		EnemyInfos := addEnemyInfoToEnemyInfos(enemy_infos)
 
 		BallInfo := createBallInfo()
+
+		RobotIpInfo := addRobotIPInfoToRobotIPInfos(robotip_infos)
 
 		GeometryInfo := createGeometryInfo()
 		RefereeInfo := createRefInfo(ourteam)
@@ -1270,6 +1317,7 @@ func RunServer(chserver chan bool, reportrate uint, ourteam int, goalpose int, d
 			Geometry:    GeometryInfo,
 			Ball:        BallInfo,
 			Referee:     RefereeInfo,
+			RobotIps:    RobotIpInfo,
 			Info:        OtherInfo,
 		}
 
