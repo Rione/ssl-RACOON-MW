@@ -803,7 +803,7 @@ func IMUReset(chimu chan bool, ourteam int, simmode bool) {
 
 			for i := 0; i < 16; i++ {
 				if robot_online[i] {
-					ipv4 := "192.168.100." + strconv.Itoa(i+100)
+					ipv4 := robot_ipaddr[i]
 					port := "20011"
 					addr := ipv4 + ":" + port
 
