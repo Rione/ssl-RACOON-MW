@@ -143,9 +143,9 @@ func Update(chupdate chan bool) {
 			robot_online_count[packet.GetRobotId()] += 1
 		}
 		//ロボットIDとIPアドレスの対応付け
-		if robot_ipaddr[packet.GetRobotId()] == "" {
+		if robot_ipaddr[packet.GetRobotId()] != addr.IP.String(){
 			robot_ipaddr[packet.GetRobotId()] = addr.IP.String()
-			log.Println("Robot ID", packet.GetRobotId(), "is", addr.IP.String())
+			log.Println("Robot ID", packet.GetRobotId(), " is associated with ", addr.IP.String())
 		}
 
 		// log.Printf("State change signal recived from %s ", addr)
