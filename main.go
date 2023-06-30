@@ -7,6 +7,7 @@ import (
 	"log"
 	"math"
 	"net"
+	"net/http"
 	"strconv"
 	"strings"
 	"time"
@@ -150,6 +151,31 @@ func Update(chupdate chan bool) {
 
 		// log.Printf("State change signal recived from %s ", addr)
 	}
+}
+
+// RobotのIPのリストをWebでホストする
+func RobotIPList(chrobotip chan bool) {
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		//ロボットのIPアドレスを表形式で表示する
+		//H1タグでタイトルを表示
+		fmt.Fprintf(w, "<h1>The RACOON Web Console</h1>")
+		fmt.Fprintf(w, "<html><head><title>The RACOON Web Console</title></head><body><table border=\"1\">")
+		fmt.Fprintf(w, "<h2>Robot IP List</h2><tr><th>Robot ID</th><th>Associated IP Address</th><th>Beep</th></tr>")
+		for i := 0; i < 16; i++ {
+			buzzurl := fmt.Sprintf("location.href=\"http://%s:9191/buzzer/tone/%s/1000\"", robot_ipaddr[i], strconv.Itoa(i))
+			fmt.Fprintf(w, "<tr><td>%d</td><td>%s</td><td><button onclick='%s'>Beep</button></td></tr>", i, robot_ipaddr[i], buzzurl)
+		}
+		fmt.Fprintf(w, "</table>")
+		//Date and Time
+		//Vision Status
+		fmt.Fprintf(w, "<h2>Vision Status: %t</h2>", isvisionrecv)
+		fmt.Fprintf(w, "<p>Generated at %s</p>", time.Now())
+		fmt.Fprintf(w, "</body></html>")
+
+	})
+	log.Fatal(http.ListenAndServe(":8080", nil))
+
+	<-chrobotip
 }
 
 var pre_command *pb_gen.Referee_Command
@@ -810,6 +836,8 @@ func IMUReset(chimu chan bool, ourteam int, simmode bool) {
 					conn, err := net.Dial("udp", addr)
 					CheckError(err)
 					conn.Write(marshalpacket)
+					time.Sleep(1 * time.Millisecond)
+					conn.Write(marshalpacket)
 					log.Println("IMU Reset Signal Sent to Robot ID: ", i)
 				}
 			}
@@ -1402,6 +1430,7 @@ func main() {
 	chfps := make(chan bool)
 	chvisrobot := make(chan bool)
 	chimu := make(chan bool)
+	chrobotip := make(chan bool)
 
 	go Update(chupdate)
 	go RunServer(chserver, *reportrate, ourteam_n, goalpos_n, *debug, *simmode)
@@ -1410,6 +1439,7 @@ func main() {
 	go FPSCounter(chfps, ourteam_n)
 	go RefereeClient(chref)
 	go IMUReset(chimu, ourteam_n, *simmode)
+	go RobotIPList(chrobotip)
 
 	<-chupdate
 	<-chserver
@@ -1418,6 +1448,7 @@ func main() {
 	<-chfps
 	<-chvisrobot
 	<-chimu
+	<-chrobotip
 
 }
 
