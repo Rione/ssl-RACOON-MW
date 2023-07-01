@@ -144,7 +144,7 @@ func Update(chupdate chan bool) {
 			robot_online_count[packet.GetRobotId()] += 1
 		}
 		//ロボットIDとIPアドレスの対応付け
-		if robot_ipaddr[packet.GetRobotId()] != addr.IP.String(){
+		if robot_ipaddr[packet.GetRobotId()] != addr.IP.String() {
 			robot_ipaddr[packet.GetRobotId()] = addr.IP.String()
 			log.Println("Robot ID", packet.GetRobotId(), " is associated with ", addr.IP.String())
 		}
@@ -812,36 +812,37 @@ func IMUReset(chimu chan bool, ourteam int, simmode bool) {
 			}
 		}
 		if isvisionrecv {
-			var signal []*pb_gen.GrSim_Robot_Command
+			for i := 0; i < 3; i++ {
+				var signal []*pb_gen.GrSim_Robot_Command
 
-			for i := 0; i < 16; i++ {
-				if robot_online[i] {
-					signal = append(signal, createIMUSignal(uint32(i), ourteam))
+				for i := 0; i < 16; i++ {
+					if robot_online[i] {
+						signal = append(signal, createIMUSignal(uint32(i), ourteam))
+					}
 				}
-			}
 
-			command := addIMUSignalToIMUSignals(signal)
-			packet := &pb_gen.GrSim_Packet{
-				Commands: command,
-			}
-			//log.Println(packet)
-			marshalpacket, _ := proto.Marshal(packet)
-
-			for i := 0; i < 16; i++ {
-				if robot_online[i] {
-					ipv4 := robot_ipaddr[i]
-					port := "20011"
-					addr := ipv4 + ":" + port
-
-					conn, err := net.Dial("udp", addr)
-					CheckError(err)
-					conn.Write(marshalpacket)
-					time.Sleep(1 * time.Millisecond)
-					conn.Write(marshalpacket)
-					log.Println("IMU Reset Signal Sent to Robot ID: ", i)
+				command := addIMUSignalToIMUSignals(signal)
+				packet := &pb_gen.GrSim_Packet{
+					Commands: command,
 				}
+				//log.Println(packet)
+				marshalpacket, _ := proto.Marshal(packet)
+
+				for i := 0; i < 16; i++ {
+					if robot_online[i] {
+						ipv4 := robot_ipaddr[i]
+						port := "20011"
+						addr := ipv4 + ":" + port
+
+						conn, err := net.Dial("udp", addr)
+						CheckError(err)
+						conn.Write(marshalpacket)
+						// log.Println("IMU Reset Signal Sent to Robot ID: ", i)
+					}
+				}
+				imu_reset_time = time.Now()
 			}
-			imu_reset_time = time.Now()
+
 		}
 		time.Sleep(IMU_RESET_INTERVAL)
 	}
