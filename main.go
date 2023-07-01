@@ -852,7 +852,7 @@ func IMUReset(chimu chan bool, ourteam int, simmode bool) {
 							conn.Write(marshalpacket)
 							time.Sleep(1 * time.Millisecond)
 							conn.Write(marshalpacket)
-							log.Println("IMU Reset Signal Sent to Robot ID: ", i)
+							// log.Println("IMU Reset Signal Sent to Robot ID: ", i)
 						}
 					}
 				} else {
