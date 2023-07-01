@@ -805,6 +805,7 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 var imu_reset_time time.Time
 
 func IMUReset(chimu chan bool, ourteam int, simmode bool) {
+	var isInBallPlacement bool = false
 	for {
 		if simmode {
 			for i := 0; i < 16; i++ {
@@ -821,26 +822,42 @@ func IMUReset(chimu chan bool, ourteam int, simmode bool) {
 					}
 				}
 
+				//check if in ball placement
+
+				if ref_command != nil {
+					if ourteam == 0 && ref_command.GetCommand() == pb_gen.Referee_BALL_PLACEMENT_BLUE {
+						isInBallPlacement = true
+					} else if ourteam == 1 && ref_command.GetCommand() == pb_gen.Referee_BALL_PLACEMENT_YELLOW {
+						isInBallPlacement = true
+					} else {
+						isInBallPlacement = false
+					}
+				}
+
 				command := addIMUSignalToIMUSignals(signal)
 				packet := &pb_gen.GrSim_Packet{
 					Commands: command,
 				}
 				//log.Println(packet)
 				marshalpacket, _ := proto.Marshal(packet)
+				if !isInBallPlacement {
+					for i := 0; i < 16; i++ {
+						if robot_online[i] {
+							ipv4 := robot_ipaddr[i]
+							port := "20011"
+							addr := ipv4 + ":" + port
 
-				for i := 0; i < 16; i++ {
-					if robot_online[i] {
-						ipv4 := robot_ipaddr[i]
-						port := "20011"
-						addr := ipv4 + ":" + port
-
-						conn, err := net.Dial("udp", addr)
-						CheckError(err)
-						conn.Write(marshalpacket)
-						// log.Println("IMU Reset Signal Sent to Robot ID: ", i)
+							conn, err := net.Dial("udp", addr)
+							CheckError(err)
+							conn.Write(marshalpacket)
+							time.Sleep(1 * time.Millisecond)
+							conn.Write(marshalpacket)
+							log.Println("IMU Reset Signal Sent to Robot ID: ", i)
+						}
 					}
+				} else {
+					log.Println("IMU Reset Ignored due to Ball Placement Mode")
 				}
-				imu_reset_time = time.Now()
 			}
 
 		}
