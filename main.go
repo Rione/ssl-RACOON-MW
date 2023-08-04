@@ -842,7 +842,7 @@ func IMUReset(chimu chan bool, ourteam int, simmode bool) {
 				marshalpacket, _ := proto.Marshal(packet)
 				if !isInBallPlacement {
 					for i := 0; i < 16; i++ {
-						if robot_online[i] {
+						if robot_online[i] && ourrobot_is_visible[i] {
 							ipv4 := robot_ipaddr[i]
 							port := "20011"
 							addr := ipv4 + ":" + port
@@ -861,6 +861,7 @@ func IMUReset(chimu chan bool, ourteam int, simmode bool) {
 			}
 
 		}
+		imu_reset_time = time.Now()
 		time.Sleep(IMU_RESET_INTERVAL)
 	}
 
