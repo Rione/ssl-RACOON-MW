@@ -636,8 +636,8 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 			//
 			/////////////////////////////////////
 			if ball != nil && pre_ball_X != 0 {
-				var ball_X float32 = filtered_ball_x
-				var ball_Y float32 = filtered_ball_y
+				var ball_X float32 = ball.GetX()
+				var ball_Y float32 = ball.GetY()
 
 				ball_difference_X = ball_X - pre_ball_X
 				ball_difference_Y = ball_Y - pre_ball_Y
@@ -655,12 +655,12 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 					ball_speed = 0.0
 				}
 
-				pre_ball_X = filtered_ball_x
-				pre_ball_Y = filtered_ball_y
+				pre_ball_X = ball.GetX()
+				pre_ball_Y = ball.GetY()
 
 			} else if ball != nil {
-				pre_ball_X = filtered_ball_x
-				pre_ball_Y = filtered_ball_y
+				pre_ball_X = ball.GetX()
+				pre_ball_Y = ball.GetY()
 
 			} else {
 				time.Sleep(1 * time.Second)
