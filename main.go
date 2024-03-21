@@ -2,8 +2,10 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"math"
 	"net"
@@ -73,6 +75,8 @@ var robot_slope [16]float32
 var robot_intercept [16]float32
 var robot_speed [16]float32
 var robot_angular_velocity [16]float32
+
+var battery_voltage [16]float32
 
 var enemy_slope [16]float32
 var enemy_intercept [16]float32
@@ -651,12 +655,12 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 					ball_speed = 0.0
 				}
 
-				pre_ball_X = ball.GetX()
-				pre_ball_Y = ball.GetY()
+				pre_ball_X = filtered_ball_x
+				pre_ball_Y = filtered_ball_y
 
 			} else if ball != nil {
-				pre_ball_X = ball.GetX()
-				pre_ball_Y = ball.GetY()
+				pre_ball_X = filtered_ball_x
+				pre_ball_Y = filtered_ball_y
 
 			} else {
 				time.Sleep(1 * time.Second)
@@ -966,6 +970,30 @@ func CheckVisionRobot(chvisrobot chan bool) {
 	}
 }
 
+func updateBatteryVoltage(chbattery chan bool) {
+	for {
+		for i := 0; i < 16; i++ {
+			if robot_online[i] {
+				//CURLを実行
+				resp, err := http.Get("http://" + robot_ipaddr[i] + ":9191/battery")
+				if err != nil {
+					log.Println("ERR: ", err)
+				} else {
+					byteArray, _ := io.ReadAll(resp.Body)
+					//JSONをパース
+					var dat map[string]interface{}
+					if err := json.Unmarshal(byteArray, &dat); err != nil {
+						log.Println("ERR: ", err)
+					}
+					//バッテリー電圧を取得
+					battery_voltage[i] = float32(dat["VOLT"].(float64))
+				}
+				time.Sleep(5 * time.Second)
+			}
+		}
+	}
+}
+
 func createIMUSignal(i uint32, ourteam int) *pb_gen.GrSim_Robot_Command {
 	var robotid uint32 = uint32(i + 100)
 	var kickspeedx float32 = 0
@@ -1036,7 +1064,7 @@ func createRobotInfo(i int, ourteam int, simmode bool) *pb_gen.Robot_Infos {
 	var diffy float32 = robot_difference_Y[i]
 	var difftheta float32 = robot_difference_Theta[i]
 
-	var batt float32 = 12.15
+	var batt float32 = battery_voltage[i]
 	var online bool = true
 	pe := &pb_gen.Robot_Infos{
 		RobotId:           &robotid,
@@ -1450,6 +1478,7 @@ func main() {
 	chvisrobot := make(chan bool)
 	chimu := make(chan bool)
 	chrobotip := make(chan bool)
+	chbattery := make(chan bool)
 
 	go Update(chupdate)
 	go RunServer(chserver, *reportrate, ourteam_n, goalpos_n, *debug, *simmode)
@@ -1459,6 +1488,7 @@ func main() {
 	go RefereeClient(chref)
 	go IMUReset(chimu, ourteam_n, *simmode)
 	go RobotIPList(chrobotip)
+	go updateBatteryVoltage(chbattery)
 
 	<-chupdate
 	<-chserver
@@ -1468,6 +1498,7 @@ func main() {
 	<-chvisrobot
 	<-chimu
 	<-chrobotip
+	<-chbattery
 
 }
 
