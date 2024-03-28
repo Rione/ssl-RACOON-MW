@@ -26,6 +26,7 @@ var NW_ROBOT_UPDATE_INTERFACE_NAME string = "nil"
 var NW_VISION_REFEREE_INTERFACE_NAME string = "nil"
 var NW_AI_IPADDR string = "127.0.0.1"
 var NW_AI_PORT string = "30011"
+var NW_AI_PORT_CONTROLLER string = "30012"
 var NW_REF_MAX_DATAGRAM_SIZE int = 8192 * 2
 
 var IMU_RESET_INTERVAL time.Duration = 5000 * time.Millisecond
@@ -1328,13 +1329,18 @@ func addRobotIPInfoToRobotIPInfos(robotipinfo [16]*pb_gen.RobotIP_Infos) []*pb_g
 func RunServer(chserver chan bool, reportrate uint, ourteam int, goalpose int, debug bool, simmode bool) {
 	ipv4 := NW_AI_IPADDR
 	port := NW_AI_PORT
+	port_controller := NW_AI_PORT_CONTROLLER
 	addr := ipv4 + ":" + port
+	addr_controller := ipv4 + ":" + port_controller
 
 	log.Println("Send to:", addr)
 
 	conn, err := net.Dial("udp", addr)
 	CheckError(err)
+	conn_controller, err := net.Dial("udp", addr_controller)
+	CheckError(err)
 	defer conn.Close()
+	defer conn_controller.Close()
 
 	var counter int
 
@@ -1403,6 +1409,7 @@ func RunServer(chserver chan bool, reportrate uint, ourteam int, goalpose int, d
 		Data, _ := proto.Marshal(RacoonMWPacket)
 		if isvisionrecv && geometrydata != nil {
 			conn.Write([]byte(Data))
+			conn_controller.Write([]byte(Data))
 		}
 
 		time.Sleep(time.Duration(reportrate) * time.Millisecond)
