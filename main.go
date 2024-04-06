@@ -10,6 +10,7 @@ import (
 	"math"
 	"net"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -257,7 +258,7 @@ var filtered_robot_y [16]float32
 var ball_x_history []float32
 var ball_y_history []float32
 
-func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmode bool, replay bool, halfswitch_n int) {
+func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmode bool, replay bool, halfswitch_n int, debug_for_sono bool) {
 	var pre_ball_X float32
 	var pre_ball_Y float32
 	var pre_robot_X [16]float32
@@ -342,10 +343,14 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 	var unixtime int
 
 	// open robot_speed_file
-	// robot_speed_file, err := os.OpenFile("./test.txt", os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
+	robot_cords_file := new(os.File)
+	if debug_for_sono {
+		err := error(nil)
+		robot_cords_file, err = os.OpenFile("./debug_for_sono.txt", os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
 
 	for i := 0; i < 60; i++ {
 
@@ -743,6 +748,11 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 
 					radian_ball_robot[i] = Calc_degree_normalize(Calc_degree(ball.GetX(), ball.GetY(), robot.GetX(), robot.GetY()) - robot.GetOrientation())
 					distance_ball_robot[i] = Calc_distance(ball.GetX(), ball.GetY(), robot.GetX(), robot.GetY())
+
+					//Print microtime and robot 0 cords to text file
+					if i == 0 && debug_for_sono {
+						fmt.Fprintf(robot_cords_file, "%d, %f, %f, %f, %f, %f, %f\n", time.Now().UnixNano(), filtered_robot_x[0], filtered_robot_y[0], robot.GetOrientation(), robot.GetX(), robot.GetY(), robot.GetOrientation())
+					}
 
 				}
 				//Print robot speed to text file
@@ -1433,6 +1443,7 @@ func main() {
 		ballmovethreshold = flag.Float64("b", 1000, "Ball Detect Threshold (Default 1000")
 		nw_robot          = flag.String("rif", "none", "NW Robot Update Interface Name (ex. en0)")
 		nw_vision         = flag.String("vif", "none", "NW Vision and Referee receive Interface Name (ex. en1)")
+		debug_for_sono    = flag.Bool("df", false, "Print ID0 Robot Cordination for Sono")
 	)
 	//OUR TEAM 0 = blue
 	//OUR TEAM 1 = yellow
@@ -1489,7 +1500,7 @@ func main() {
 
 	go Update(chupdate)
 	go RunServer(chserver, *reportrate, ourteam_n, goalpos_n, *debug, *simmode)
-	go VisionReceive(chvision, *visionport, ourteam_n, goalpos_n, *simmode, *replay, halfswitch_n)
+	go VisionReceive(chvision, *visionport, ourteam_n, goalpos_n, *simmode, *replay, halfswitch_n, *debug_for_sono)
 	go CheckVisionRobot(chvisrobot)
 	go FPSCounter(chfps, ourteam_n)
 	go RefereeClient(chref)
