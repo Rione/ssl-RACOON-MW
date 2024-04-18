@@ -229,6 +229,7 @@ func RefereeClient(chref chan bool) {
 			log.Printf("==== REFEREE OK KEEP RECEIVING FROM %s ====", addr)
 			refcounter = 0
 		}
+
 		refcounter++
 	}
 }
@@ -1275,6 +1276,8 @@ func createRefInfo(ourteam int) *pb_gen.Referee_Info {
 	var yellowcards uint32
 	var redcards uint32
 	var command *pb_gen.Referee_Info_Command
+	var teaminfo_our *pb_gen.Referee_Info_TeamInfo
+	var teaminfo_their *pb_gen.Referee_Info_TeamInfo
 	var stage *pb_gen.Referee_Info_Stage
 	var next_command *pb_gen.Referee_Info_Command
 	var bpX float32
@@ -1289,9 +1292,13 @@ func createRefInfo(ourteam int) *pb_gen.Referee_Info {
 		if ourteam == 0 {
 			yellowcards = ref_command.Blue.GetYellowCards()
 			redcards = ref_command.Blue.GetRedCards()
+			teaminfo_our = (*pb_gen.Referee_Info_TeamInfo)(ref_command.Blue)
+			teaminfo_their = (*pb_gen.Referee_Info_TeamInfo)(ref_command.Yellow)
 		} else {
 			yellowcards = ref_command.Yellow.GetYellowCards()
-			redcards = ref_command.Blue.GetRedCards()
+			redcards = ref_command.Yellow.GetRedCards()
+			teaminfo_our = (*pb_gen.Referee_Info_TeamInfo)(ref_command.Yellow)
+			teaminfo_their = (*pb_gen.Referee_Info_TeamInfo)(ref_command.Blue)
 		}
 
 	} else {
@@ -1302,6 +1309,8 @@ func createRefInfo(ourteam int) *pb_gen.Referee_Info {
 	pe := &pb_gen.Referee_Info{
 		Command:        command,
 		Stage:          stage,
+		TeaminfoOur:    teaminfo_our,
+		TeaminfoTheir:  teaminfo_their,
 		YellowCards:    &yellowcards,
 		RedCards:       &redcards,
 		PreCommand:     last_command,
