@@ -820,7 +820,7 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 
 var imu_reset_time time.Time
 
-func IMUReset(chimu chan bool, ourteam int, simmode bool) {
+func IMUReset(chimu chan bool, ourteam int, simmode bool, ignoreimureset bool) {
 	var isInBallPlacement bool = false
 	for {
 		if simmode {
@@ -856,7 +856,7 @@ func IMUReset(chimu chan bool, ourteam int, simmode bool) {
 				}
 				//log.Println(packet)
 				marshalpacket, _ := proto.Marshal(packet)
-				if !isInBallPlacement {
+				if !isInBallPlacement && !ignoreimureset {
 					for i := 0; i < 16; i++ {
 						if robot_online[i] && ourrobot_is_visible[i] {
 							ipv4 := robot_ipaddr[i]
@@ -872,7 +872,7 @@ func IMUReset(chimu chan bool, ourteam int, simmode bool) {
 						}
 					}
 				} else {
-					log.Println("IMU Reset Ignored due to Ball Placement Mode")
+					log.Println("IMU Reset Ignored due to Ball Placement Mode or Disable flag")
 				}
 			}
 
@@ -1453,6 +1453,7 @@ func main() {
 		nw_robot          = flag.String("rif", "none", "NW Robot Update Interface Name (ex. en0)")
 		nw_vision         = flag.String("vif", "none", "NW Vision and Referee receive Interface Name (ex. en1)")
 		debug_for_sono    = flag.Bool("df", false, "Print ID0 Robot Cordination for Sono")
+		ignoreimureset    = flag.Bool("disableimu", false, "Ignore IMU Reset")
 	)
 	//OUR TEAM 0 = blue
 	//OUR TEAM 1 = yellow
@@ -1513,7 +1514,7 @@ func main() {
 	go CheckVisionRobot(chvisrobot)
 	go FPSCounter(chfps, ourteam_n)
 	go RefereeClient(chref)
-	go IMUReset(chimu, ourteam_n, *simmode)
+	go IMUReset(chimu, ourteam_n, *simmode, *ignoreimureset)
 	go RobotIPList(chrobotip)
 	go updateBatteryVoltage(chbattery)
 
