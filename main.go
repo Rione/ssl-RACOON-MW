@@ -1282,6 +1282,7 @@ func createRefInfo(ourteam int) *pb_gen.Referee_Info {
 	var next_command *pb_gen.Referee_Info_Command
 	var bpX float32
 	var bpY float32
+	var gameevent []*pb_gen.GameEvent
 
 	if ref_command != nil {
 		command = (*pb_gen.Referee_Info_Command)(ref_command.Command)
@@ -1289,6 +1290,7 @@ func createRefInfo(ourteam int) *pb_gen.Referee_Info {
 		next_command = (*pb_gen.Referee_Info_Command)(ref_command.NextCommand)
 		bpX = ref_command.GetDesignatedPosition().GetX()
 		bpY = ref_command.GetDesignatedPosition().GetY()
+		gameevent = ref_command.GetGameEvents()
 		if ourteam == 0 {
 			yellowcards = ref_command.Blue.GetYellowCards()
 			redcards = ref_command.Blue.GetRedCards()
@@ -1313,6 +1315,7 @@ func createRefInfo(ourteam int) *pb_gen.Referee_Info {
 		TeaminfoTheir:  teaminfo_their,
 		YellowCards:    &yellowcards,
 		RedCards:       &redcards,
+		Event:          gameevent,
 		PreCommand:     last_command,
 		NextCommand:    next_command,
 		BallPlacementX: &bpX,

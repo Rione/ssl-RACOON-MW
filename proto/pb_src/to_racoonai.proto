@@ -1,5 +1,7 @@
 syntax = "proto2";
 
+import "ssl_gc_game_event.proto";
+
 option go_package = "github.com/Rione-SSL/RACOON-Pi/proto/pb_gen";
 
 
@@ -192,12 +194,14 @@ message Referee_Info {
         POST_GAME = 13;
     }
     required Stage stage = 4;
+
     required uint32 yellow_cards = 5;
     required uint32 red_cards = 6;
-    optional Command pre_command = 7;
-    optional Command next_command = 8;
-    optional float ball_placement_x = 9;
-    optional float ball_placement_y = 10;
+    repeated GameEvent event = 7;
+    optional Command pre_command = 8;
+    optional Command next_command = 9;
+    optional float ball_placement_x = 10;
+    optional float ball_placement_y = 11;
 }
 
 message RobotIP_Infos {
@@ -223,4 +227,5 @@ message RacoonMW_Packet {
     required Referee_Info referee = 5;
     repeated RobotIP_Infos robot_ips = 6;
     required Other_Infos info = 7;
+    repeated GameEvent event = 8;
 }
