@@ -724,8 +724,8 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 					filtered_robot_x[i] = float32(modelRobotX[i].Value(filterRobotX[i].State()))
 					filtered_robot_y[i] = float32(modelRobotY[i].Value(filterRobotY[i].State()))
 
-					robot_difference_X[i] = filtered_robot_x[i] - pre_robot_X[i]
-					robot_difference_Y[i] = filtered_robot_y[i] - pre_robot_Y[i]
+					robot_difference_X[i] = robot.GetX() - pre_robot_X[i]
+					robot_difference_Y[i] = robot.GetY() - pre_robot_Y[i]
 					robot_difference_Theta[i] = robot.GetOrientation() - pre_robot_Theta[i]
 
 					rdX64[i] = float64(robot_difference_X[i])
@@ -743,8 +743,8 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 
 					robot_angular_velocity[i] = robot_difference_Theta[i] / 0.016
 
-					pre_robot_X[i] = filtered_robot_x[i]
-					pre_robot_Y[i] = filtered_robot_y[i]
+					pre_robot_X[i] = robot.GetX()
+					pre_robot_Y[i] = robot.GetY()
 					pre_robot_Theta[i] = robot.GetOrientation()
 
 					radian_ball_robot[i] = Calc_degree_normalize(Calc_degree(ball.GetX(), ball.GetY(), robot.GetX(), robot.GetY()) - robot.GetOrientation())
