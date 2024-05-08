@@ -290,7 +290,7 @@ func createRefInfo(ourteam int) *pb_gen.Referee_Info {
 		next_command = (*pb_gen.Referee_Info_Command)(ref_command.NextCommand)
 		bpX = ref_command.GetDesignatedPosition().GetX()
 		bpY = ref_command.GetDesignatedPosition().GetY()
-		// gameevent = ref_command.GetGameEvents()
+		gameevent = ref_command.GetGameEvents()
 		if ourteam == 0 {
 			yellowcards = ref_command.Blue.GetYellowCards()
 			redcards = ref_command.Blue.GetRedCards()
