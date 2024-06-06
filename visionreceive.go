@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 	"math"
+
+	// "math/rand"
 	"net"
 	"os"
 	"strconv"
@@ -15,6 +17,13 @@ import (
 	"github.com/rosshemsley/kalman"
 	"github.com/rosshemsley/kalman/models"
 	"google.golang.org/protobuf/proto"
+
+	filter "github.com/milosgajdos/go-estimate"
+	"github.com/milosgajdos/go-estimate/estimate"
+	"github.com/milosgajdos/go-estimate/kalman/ekf"
+	"github.com/milosgajdos/go-estimate/noise"
+	"github.com/milosgajdos/go-estimate/sim"
+	"gonum.org/v1/gonum/mat"
 )
 
 func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmode bool, replay bool, halfswitch_n int, debug_for_sono bool) {
@@ -39,6 +48,8 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 	var averagex float64 = 0
 	var averagey float64 = 0
 
+	var est filter.Estimate //推定値
+
 	modelBallX = models.NewSimpleModel(t, 0.0, models.SimpleModelConfig{
 		InitialVariance:     100,
 		ProcessVariance:     0,
@@ -56,26 +67,68 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 	filterBallY := kalman.NewKalmanFilter(modelBallY)
 	// smoothedBallY := kalman.NewKalmanSmoother(modelBallX)
 
-	var modelRobotX [16]*models.SimpleModel
-	var modelRobotY [16]*models.SimpleModel
+	// var modelRobotX [16]*models.SimpleModel
+	// var modelRobotY [16]*models.SimpleModel
 
-	var filterRobotX [16]*kalman.KalmanFilter
-	var filterRobotY [16]*kalman.KalmanFilter
+	// var filterRobotX [16]*kalman.KalmanFilter
+	// var filterRobotY [16]*kalman.KalmanFilter
+
+	filterRobot := make([]*ekf.EKF, 16)
+	filtered_robot_x := make([]float32, 16)
+	filtered_robot_y := make([]float32, 16)
+
+	A := mat.NewDense(2, 2, []float64{1.0, 1.0, 0.0, 1.0})
+	C := mat.NewDense(1, 2, []float64{1.0, 0.0})
+	dot, err := sim.NewBaseModel(A, nil, C, nil, nil) //dotは状態方程式の行列
+	if err != nil {
+		log.Fatalf("Failed to create base model: %v", err)
+	}
+
+	measCov := mat.NewSymDense(1, []float64{1e-1}) //measCovは観測ノイズの共分散行列
+	measNoise, err := noise.NewGaussian([]float64{0.0}, measCov)
+	if err != nil {
+		log.Fatalf("Failed to create measurement noise: %v", err)
+	}
+
+	stateCov := mat.NewSymDense(2, []float64{1e-5, 0, 0, 1e-5}) //stateCovは状態ノイズの共分散行列
+	stateNoise, err := noise.NewGaussian([]float64{0.0, 0.0}, stateCov)
+	if err != nil {
+		log.Fatalf("Failed to create state noise: %v", err)
+	}
+
+	var x mat.Vector = mat.NewVecDense(2, []float64{0.0, 0.0}) //ここわからない
+	initX := &mat.VecDense{}
+	initX.CloneFromVec(x)
+	initX.AddVec(initX, stateNoise.Sample())
+
+	initCond := sim.NewInitCond(x, stateCov) //initCondは初期状態の共分散行列
+
+	z := new(mat.VecDense)
+
+	est, err = estimate.NewBase(initX) //estは推定値
+	if err != nil {
+		log.Fatalf("Failed to create estimate: %v", err)
+	}
 
 	for i := 0; i < 16; i++ {
-		modelRobotX[i] = models.NewSimpleModel(t, 0.0, models.SimpleModelConfig{
-			InitialVariance:     1.0,
-			ProcessVariance:     0.01,
-			ObservationVariance: 0.05,
-		})
-		filterRobotX[i] = kalman.NewKalmanFilter(modelRobotX[i])
+		// modelRobotX[i] = models.NewSimpleModel(t, 0.0, models.SimpleModelConfig{
+		// 	InitialVariance:     1.0,
+		// 	ProcessVariance:     2,
+		// 	ObservationVariance: 2.0,
+		// })
 
-		modelRobotY[i] = models.NewSimpleModel(t, 0.0, models.SimpleModelConfig{
-			InitialVariance:     1.0,
-			ProcessVariance:     2,
-			ObservationVariance: 2.0,
-		})
-		filterRobotY[i] = kalman.NewKalmanFilter(modelRobotY[i])
+		// modelRobotY[i] = models.NewSimpleModel(t, 0.0, models.SimpleModelConfig{
+		// 	InitialVariance:     1.0,
+		// 	ProcessVariance:     2,
+		// 	ObservationVariance: 2.0,
+		// })
+		// filterRobotY[i] = kalman.NewKalmanFilter(modelRobotY[i])
+
+		filterRobot[i], err = ekf.New(dot, initCond, stateNoise, measNoise) //カルマンフィルタの作成
+		if err != nil {
+			log.Fatalf("Failed to create filter: %v", err)
+		}
+
 	}
 
 	//f, _ := os.Create("./DEBUG2.txt")
@@ -491,6 +544,7 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 			//	OUR ROBOT STATUS CALCULATION
 			//
 			/////////////////////////////////////
+
 			var rdX64 [16]float64
 			var rdY64 [16]float64
 
@@ -498,18 +552,43 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 				if robot != nil {
 					i := robot.GetRobotId()
 
+					// //Kalman Filter
+					// err := filterRobotX[i].Update(t, modelRobotX[i].NewMeasurement(float64(robot.GetX())))
+					// if err != nil {
+					// 	log.Println(err)
+					// }
+					// err = filterRobotY[i].Update(t, modelRobotY[i].NewMeasurement(float64(robot.GetY())))
+					// if err != nil {
+					// 	log.Println(err)
+					// }
+
+					// filtered_robot_x[i] = float32(modelRobotX[i].Value(filterRobotX[i].State()))
+					// filtered_robot_y[i] = float32(modelRobotY[i].Value(filterRobotY[i].State()))
+
 					//Kalman Filter
-					err := filterRobotX[i].Update(t, modelRobotX[i].NewMeasurement(float64(robot.GetX())))
-					if err != nil {
-						log.Println(err)
-					}
-					err = filterRobotY[i].Update(t, modelRobotY[i].NewMeasurement(float64(robot.GetY())))
+
+					//ovservation
+					y := mat.NewVecDense(2, []float64{float64(robot.GetX()), float64(robot.GetY())})
+					noise := measNoise.Sample()
+					z.AddVec(y, noise)
+
+					//フィルタの予測ステップ(予測値)
+					pred, err := filterRobot[i].Predict(est.Val(), nil)
 					if err != nil {
 						log.Println(err)
 					}
 
-					filtered_robot_x[i] = float32(modelRobotX[i].Value(filterRobotX[i].State()))
-					filtered_robot_y[i] = float32(modelRobotY[i].Value(filterRobotY[i].State()))
+					//フィルタの更新ステップ(推定値)
+					est, err = filterRobot[i].Update(pred.Val(), nil, z)
+					if err != nil {
+						log.Println(err)
+					}
+
+					filtered_robot_x[i] = float32(est.Val().AtVec(0))
+					filtered_robot_y[i] = float32(est.Val().AtVec(1))
+
+					fmt.Printf("X: before: %f, filtered value: %f\n", robot.GetX(), filtered_robot_x[i])
+					fmt.Printf("Y: before: %f, filtered value: %f\n", robot.GetY(), filtered_robot_y[i])
 
 					robot_difference_X[i] = robot.GetX() - pre_robot_X[i]
 					robot_difference_Y[i] = robot.GetY() - pre_robot_Y[i]
