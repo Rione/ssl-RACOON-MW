@@ -33,12 +33,6 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 	var modelBallX *models.SimpleModel
 	var modelBallY *models.SimpleModel
 
-	// var sum float64 = 0
-	// var sumx float64 = 0
-	// var sumy float64 = 0
-	// var averagex float64 = 0
-	// var averagey float64 = 0
-
 	modelBallX = models.NewSimpleModel(t, 0.0, models.SimpleModelConfig{
 		InitialVariance:     100,
 		ProcessVariance:     0,
@@ -77,8 +71,6 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 		})
 		filterRobotY[i] = kalman.NewKalmanFilter(modelRobotY[i])
 	}
-
-	//f, _ := os.Create("./DEBUG2.txt")
 
 	var pre_framecounter int = 0
 
@@ -143,9 +135,6 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 
 	log.Printf("MAX CAMERAS: %d", maxcameras)
 	log.Printf("Receive Loop and Send Start: Vision addr %s", serverAddr)
-
-	f := new(os.File)
-	f, _ = os.OpenFile("./ball_cords.txt", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 
 	for {
 		for i := 0; i < maxcameras; i++ {
@@ -367,7 +356,6 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 				for i, v := range ball_x_history {
 					mm_x[i] = kalman.NewMeasurementAtTime(t, modelBallX.NewMeasurement(float64(v)))
 				}
-				smoothBallX_states, err := kalman.NewKalmanSmoother(modelBallX).Smooth(mm_x...)
 
 				//if ball_x_history is too long, remove first element
 				if len(ball_y_history) > 5 {
@@ -385,42 +373,6 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 				for i, v := range ball_y_history {
 					mm_y[i] = kalman.NewMeasurementAtTime(t, modelBallY.NewMeasurement(float64(v)))
 				}
-				// smoothBallY_states, err := kalman.NewKalmanSmoother(modelBallY).Smooth(mm_y...)
-
-				//smoothBallX_states の 4番目のsを取得する modelBallX.Value(smoothBallX_states[3].State)
-
-				// if len(smoothBallX_states) >= 4 {
-				// 	// robot_speed_fileに書き込み
-				// 	// log.Println("smoothBallX_states", smoothBallX_states)
-				// 	// robot_speed_file.WriteString(fmt.Sprintf("%f %f %f\n", ball.GetX(), modelBallX.Value(filterBallX.State()), modelBallX.Value(smoothBallX_states[1].State)))
-				// }
-
-				// log.Println("smoothBallX_states", smoothBallX_states)
-				// log.Println("smoothBallY_states", smoothBallY_states)
-				//fmt.Printf("X: before: %f, filtered value: %f\n", ball.GetX(), modelBallX.Value(filterBallX.State()))
-				//fmt.Printf("Y: before: %f, filtered value: %f\n", ball.GetY(), modelBallY.Value(filterBallY.State()))
-				filtered_ball_x = float32(modelBallX.Value(filterBallX.State()))
-				filtered_ball_y = float32(modelBallY.Value(filterBallY.State()))
-
-				// log.Println("filtered_ball: ", filtered_ball_x, filtered_ball_y)
-				// fmt.Printf("X: before: %f, filtered value: %f\n", ball.GetX(), modelBallX.Value(filterBallX.State()))
-				// fmt.Printf("Y: before: %f, filtered value: %f\n", ball.GetY(), modelBallY.Value(filterBallY.State()))
-				// fmt.Printf("%f\n", modelBallX.Value(filterBallX.State()))
-				// fmt.Printf("Y: %f\n", modelBallY.Value(filterBallY.State()))
-				// sum++
-
-				// if sum < 300 {
-				// 	f.WriteString(fmt.Sprintf("%f", ball.GetX()) + "," + fmt.Sprintf("%f", math.Abs(modelBallX.Value(filterBallX.State()))) + "\n")
-				// 	sumx += math.Abs(modelBallX.Value(filterBallX.State()))
-				// 	sumy += math.Abs(modelBallY.Value(filterBallY.State()))
-				// }
-				// if sum == 300 {
-				// 	averagex = sumx / 300
-				// 	averagey = sumy / 300
-				// }
-
-				// fmt.Printf("X: %f\n", averagex)
-				// fmt.Printf("Y: %f\n", averagey)
 
 			}
 
