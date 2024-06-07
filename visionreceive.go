@@ -33,11 +33,11 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 	var modelBallX *models.SimpleModel
 	var modelBallY *models.SimpleModel
 
-	var sum float64 = 0
-	var sumx float64 = 0
-	var sumy float64 = 0
-	var averagex float64 = 0
-	var averagey float64 = 0
+	// var sum float64 = 0
+	// var sumx float64 = 0
+	// var sumy float64 = 0
+	// var averagex float64 = 0
+	// var averagey float64 = 0
 
 	modelBallX = models.NewSimpleModel(t, 0.0, models.SimpleModelConfig{
 		InitialVariance:     100,
@@ -64,16 +64,16 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 
 	for i := 0; i < 16; i++ {
 		modelRobotX[i] = models.NewSimpleModel(t, 0.0, models.SimpleModelConfig{
-			InitialVariance:     1.0,
-			ProcessVariance:     0.01,
-			ObservationVariance: 0.05,
+			InitialVariance:     100.0,
+			ProcessVariance:     0,
+			ObservationVariance: 0.1,
 		})
 		filterRobotX[i] = kalman.NewKalmanFilter(modelRobotX[i])
 
 		modelRobotY[i] = models.NewSimpleModel(t, 0.0, models.SimpleModelConfig{
-			InitialVariance:     1.0,
-			ProcessVariance:     2,
-			ObservationVariance: 2.0,
+			InitialVariance:     100,
+			ProcessVariance:     0,
+			ObservationVariance: 0.1,
 		})
 		filterRobotY[i] = kalman.NewKalmanFilter(modelRobotY[i])
 	}
@@ -389,11 +389,11 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 
 				//smoothBallX_states の 4番目のsを取得する modelBallX.Value(smoothBallX_states[3].State)
 
-				if len(smoothBallX_states) >= 4 {
-					// robot_speed_fileに書き込み
-					// log.Println("smoothBallX_states", smoothBallX_states)
-					// robot_speed_file.WriteString(fmt.Sprintf("%f %f %f\n", ball.GetX(), modelBallX.Value(filterBallX.State()), modelBallX.Value(smoothBallX_states[1].State)))
-				}
+				// if len(smoothBallX_states) >= 4 {
+				// 	// robot_speed_fileに書き込み
+				// 	// log.Println("smoothBallX_states", smoothBallX_states)
+				// 	// robot_speed_file.WriteString(fmt.Sprintf("%f %f %f\n", ball.GetX(), modelBallX.Value(filterBallX.State()), modelBallX.Value(smoothBallX_states[1].State)))
+				// }
 
 				// log.Println("smoothBallX_states", smoothBallX_states)
 				// log.Println("smoothBallY_states", smoothBallY_states)
@@ -403,24 +403,24 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 				filtered_ball_y = float32(modelBallY.Value(filterBallY.State()))
 
 				// log.Println("filtered_ball: ", filtered_ball_x, filtered_ball_y)
-				fmt.Printf("X: before: %f, filtered value: %f\n", ball.GetX(), modelBallX.Value(filterBallX.State()))
-				fmt.Printf("Y: before: %f, filtered value: %f\n", ball.GetY(), modelBallY.Value(filterBallY.State()))
+				// fmt.Printf("X: before: %f, filtered value: %f\n", ball.GetX(), modelBallX.Value(filterBallX.State()))
+				// fmt.Printf("Y: before: %f, filtered value: %f\n", ball.GetY(), modelBallY.Value(filterBallY.State()))
 				// fmt.Printf("%f\n", modelBallX.Value(filterBallX.State()))
 				// fmt.Printf("Y: %f\n", modelBallY.Value(filterBallY.State()))
-				sum++
+				// sum++
 
-				if sum < 300 {
-					f.WriteString(fmt.Sprintf("%f", ball.GetX()) + "," + fmt.Sprintf("%f", math.Abs(modelBallX.Value(filterBallX.State()))) + "\n")
-					sumx += math.Abs(modelBallX.Value(filterBallX.State()))
-					sumy += math.Abs(modelBallY.Value(filterBallY.State()))
-				}
-				if sum == 300 {
-					averagex = sumx / 300
-					averagey = sumy / 300
-				}
+				// if sum < 300 {
+				// 	f.WriteString(fmt.Sprintf("%f", ball.GetX()) + "," + fmt.Sprintf("%f", math.Abs(modelBallX.Value(filterBallX.State()))) + "\n")
+				// 	sumx += math.Abs(modelBallX.Value(filterBallX.State()))
+				// 	sumy += math.Abs(modelBallY.Value(filterBallY.State()))
+				// }
+				// if sum == 300 {
+				// 	averagex = sumx / 300
+				// 	averagey = sumy / 300
+				// }
 
-				fmt.Printf("X: %f\n", averagex)
-				fmt.Printf("Y: %f\n", averagey)
+				// fmt.Printf("X: %f\n", averagex)
+				// fmt.Printf("Y: %f\n", averagey)
 
 			}
 
