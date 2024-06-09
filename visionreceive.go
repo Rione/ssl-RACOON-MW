@@ -615,6 +615,7 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 					y_kCxhb_k.Sub(y_k, y_kCxhb_k)
 					G_ky_kCxhb_k.Product(G_k, y_kCxhb_k)
 					xh_k.Add(xhb_k, G_ky_kCxhb_k)
+					xh_k_1[i] = xh_k
 
 					P_k := mat.NewDense(6, 6, nil)
 					G_kC := mat.NewDense(6, 6, nil)
@@ -627,7 +628,8 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 					filtered_robot_x[i] = float32(xh_k.At(0, 0))
 					filtered_robot_y[i] = float32(xh_k.At(1, 0))
 
-					fmt.Printf("robot %d: before: %f, filtered value: %f\n", i, robot.GetX(), filtered_robot_x[i])
+					fmt.Printf("robot:x %d: before: %f, filtered value: %f\n", i, robot.GetX(), filtered_robot_x[i])
+					fmt.Printf("robot:y %d: before: %f, filtered value: %f\n", i, robot.GetY(), filtered_robot_y[i])
 
 					robot_difference_X[i] = robot.GetX() - pre_robot_X[i]
 					robot_difference_Y[i] = robot.GetY() - pre_robot_Y[i]
