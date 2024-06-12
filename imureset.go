@@ -1,73 +1,59 @@
 package main
 
 import (
-	"log"
 	"net"
-	"time"
+	"sync"
 
 	"github.com/Rione-SSL/RACOON-MW/proto/pb_gen"
 	"google.golang.org/protobuf/proto"
 )
 
-func IMUReset(chimu chan bool, ourteam int, simmode bool, ignoreimureset bool) {
-	var isInBallPlacement bool = false
-	for {
-		if simmode {
-			for i := 0; i < 16; i++ {
-				robot_online[i] = true
-			}
-		}
-		if isvisionrecv {
-			for i := 0; i < 3; i++ {
-				var signal []*pb_gen.GrSim_Robot_Command
+// x, y, theta の速度成分を構造体に格納
+type RobotVelocity struct {
+	X       float32
+	Y       float32
+	Angular float32
+}
 
-				for i := 0; i < 16; i++ {
-					if robot_online[i] {
-						signal = append(signal, createIMUSignal(uint32(i), ourteam))
-					}
-				}
+var controllerRobotVelocitys [16]RobotVelocity
 
-				//check if in ball placement
+// mutex
+var mutex sync.Mutex
 
-				if ref_command != nil {
-					if ourteam == 0 && ref_command.GetCommand() == pb_gen.Referee_BALL_PLACEMENT_BLUE {
-						isInBallPlacement = true
-					} else if ourteam == 1 && ref_command.GetCommand() == pb_gen.Referee_BALL_PLACEMENT_YELLOW {
-						isInBallPlacement = true
-					} else {
-						isInBallPlacement = false
-					}
-				}
-
-				command := addIMUSignalToIMUSignals(signal)
-				packet := &pb_gen.GrSim_Packet{
-					Commands: command,
-				}
-				//log.Println(packet)
-				marshalpacket, _ := proto.Marshal(packet)
-				if !isInBallPlacement && !ignoreimureset {
-					for i := 0; i < 16; i++ {
-						if robot_online[i] && ourrobot_is_visible[i] {
-							ipv4 := robot_ipaddr[i]
-							port := "20011"
-							addr := ipv4 + ":" + port
-
-							conn, err := net.Dial("udp", addr)
-							CheckError(err)
-							conn.Write(marshalpacket)
-							time.Sleep(1 * time.Millisecond)
-							conn.Write(marshalpacket)
-							// log.Println("IMU Reset Signal Sent to Robot ID: ", i)
-						}
-					}
-				} else {
-					log.Println("IMU Reset Ignored due to Ball Placement Mode or Disable flag")
-				}
-			}
-
-		}
-		imu_reset_time = time.Now()
-		time.Sleep(IMU_RESET_INTERVAL)
+func controllerFeedback(chctrlfb chan bool) {
+	// コントローラからの通信をUDPで待ち受ける
+	serverAddr := &net.UDPAddr{
+		IP:   net.ParseIP("127.0.0.1"),
+		Port: 50001,
 	}
 
+	serverConn, err := net.ListenUDP("udp", serverAddr)
+	CheckError(err)
+	defer serverConn.Close()
+
+	buf := make([]byte, 1024)
+
+	for {
+		n, _, err := serverConn.ReadFromUDP(buf)
+		CheckError(err)
+
+		packet := &pb_gen.GrSim_Packet{}
+		err = proto.Unmarshal(buf[0:n], packet)
+		CheckError(err)
+
+		mutex.Lock()
+
+		for i := range controllerRobotVelocitys {
+			controllerRobotVelocitys[i] = RobotVelocity{}
+		}
+		for _, command := range packet.Commands.RobotCommands {
+			controllerRobotVelocitys[command.GetId()] = RobotVelocity{
+				X:       command.GetVeltangent(),
+				Y:       command.GetVelnormal(),
+				Angular: command.GetVelangular(),
+			}
+		}
+
+		mutex.Unlock()
+	}
 }

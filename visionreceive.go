@@ -55,7 +55,7 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 
 	modelBallX = models.NewSimpleModel(t, 0.0, models.SimpleModelConfig{
 		InitialVariance:     100,
-		ProcessVariance:     0,
+		ProcessVariance:     0.1,
 		ObservationVariance: 0.1,
 	})
 	filterBallX := kalman.NewKalmanFilter(modelBallX)
@@ -64,7 +64,7 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 
 	modelBallY = models.NewSimpleModel(t, 0.0, models.SimpleModelConfig{
 		InitialVariance:     100,
-		ProcessVariance:     0,
+		ProcessVariance:     0.1,
 		ObservationVariance: 0.1,
 	})
 	filterBallY := kalman.NewKalmanFilter(modelBallY)

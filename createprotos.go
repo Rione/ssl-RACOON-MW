@@ -1,56 +1,8 @@
 package main
 
 import (
-	"time"
-
 	"github.com/Rione-SSL/RACOON-MW/proto/pb_gen"
 )
-
-func createIMUSignal(i uint32, ourteam int) *pb_gen.GrSim_Robot_Command {
-	var robotid uint32 = uint32(i + 100)
-	var kickspeedx float32 = 0
-	var kickspeedz float32 = 0
-	var veltangent float32 = 0
-	var velnormal float32 = 0
-	var velangular float32 = bluerobots[i].GetOrientation()
-	if ourteam == 1 {
-		velangular = yellowrobots[i].GetOrientation()
-	}
-	var spinner bool = false
-	var wheelsspeed bool = false
-
-	pe := &pb_gen.GrSim_Robot_Command{
-		Id:          &robotid,
-		Kickspeedx:  &kickspeedx,
-		Kickspeedz:  &kickspeedz,
-		Veltangent:  &veltangent,
-		Velnormal:   &velnormal,
-		Velangular:  &velangular,
-		Spinner:     &spinner,
-		Wheelsspeed: &wheelsspeed,
-	}
-	return pe
-}
-
-func addIMUSignalToIMUSignals(imusignals []*pb_gen.GrSim_Robot_Command) *pb_gen.GrSim_Commands {
-	var timestamp float64 = float64(time.Now().UnixNano() / 1e6)
-	var isteamyellow bool = false
-
-	var ImuSignal []*pb_gen.GrSim_Robot_Command
-	for _, signal := range imusignals {
-		if signal != nil {
-			ImuSignal = append(ImuSignal, signal)
-		}
-	}
-
-	ImuSignals := &pb_gen.GrSim_Commands{
-		Timestamp:     &timestamp,
-		Isteamyellow:  &isteamyellow,
-		RobotCommands: ImuSignal,
-	}
-
-	return ImuSignals
-}
 
 func createRobotInfo(i int, ourteam int, simmode bool) *pb_gen.Robot_Infos {
 	var robotid uint32

@@ -218,7 +218,6 @@ func main() {
 		nw_robot          = flag.String("rif", "none", "NW Robot Update Interface Name (ex. en0)")
 		nw_vision         = flag.String("vif", "none", "NW Vision and Referee receive Interface Name (ex. en1)")
 		debug_for_sono    = flag.Bool("df", false, "Print ID0 Robot Cordination for Sono")
-		ignoreimureset    = flag.Bool("disableimu", false, "Ignore IMU Reset")
 	)
 	//OUR TEAM 0 = blue
 	//OUR TEAM 1 = yellow
@@ -269,7 +268,7 @@ func main() {
 	chref := make(chan bool)
 	chfps := make(chan bool)
 	chvisrobot := make(chan bool)
-	chimu := make(chan bool)
+	chctrlfb := make(chan bool)
 	chrobotip := make(chan bool)
 	chbattery := make(chan bool)
 
@@ -279,7 +278,7 @@ func main() {
 	go CheckVisionRobot(chvisrobot)
 	go FPSCounter(chfps, ourteam_n)
 	go RefereeClient(chref)
-	go IMUReset(chimu, ourteam_n, *simmode, *ignoreimureset)
+	go controllerFeedback(chctrlfb)
 	go RobotIPList(chrobotip)
 	go updateBatteryVoltage(chbattery)
 
@@ -289,7 +288,7 @@ func main() {
 	<-chref
 	<-chfps
 	<-chvisrobot
-	<-chimu
+	<-chctrlfb
 	<-chrobotip
 	<-chbattery
 
