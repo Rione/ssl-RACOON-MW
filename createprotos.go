@@ -11,18 +11,14 @@ func createRobotInfo(i int, ourteam int, simmode bool) *pb_gen.Robot_Infos {
 	var theta float32
 	if ourteam == 0 {
 		robotid = bluerobots[i].GetRobotId()
-		x = bluerobots[i].GetX()
-		// x = filtered_robot_x[i]
-		y = bluerobots[i].GetY()
-		// y = filtered_robot_y[i]
-		theta = bluerobots[i].GetOrientation()
+		x = filtered_robot_x[i]
+		y = filtered_robot_y[i]
+		theta = filtered_robot_theta[i]
 	} else {
 		robotid = yellowrobots[i].GetRobotId()
-		x = yellowrobots[i].GetX()
-		// x = filtered_robot_x[i]
-		y = yellowrobots[i].GetY()
-		// y = filtered_robot_y[i]
-		theta = yellowrobots[i].GetOrientation()
+		x = filtered_robot_x[i]
+		y = filtered_robot_y[i]
+		theta = filtered_robot_theta[i]
 	}
 	var diffx float32 = robot_difference_X[i]
 	var diffy float32 = robot_difference_Y[i]

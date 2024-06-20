@@ -426,8 +426,8 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 				filtered_ball_y = float32(modelBallY.Value(filterBallY.State()))
 
 				// log.Println("filtered_ball: ", filtered_ball_x, filtered_ball_y)
-				fmt.Printf("X: before: %f, filtered value: %f\n", ball.GetX(), modelBallX.Value(filterBallX.State()))
-				fmt.Printf("Y: before: %f, filtered value: %f\n", ball.GetY(), modelBallY.Value(filterBallY.State()))
+				// fmt.Printf("X: before: %f, filtered value: %f\n", ball.GetX(), modelBallX.Value(filterBallX.State()))
+				// fmt.Printf("Y: before: %f, filtered value: %f\n", ball.GetY(), modelBallY.Value(filterBallY.State()))
 				// fmt.Printf("%f\n", modelBallX.Value(filterBallX.State()))
 				// fmt.Printf("Y: %f\n", modelBallY.Value(filterBallY.State()))
 				// sum++
@@ -540,6 +540,9 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 					x4 := xh_k_1[i].At(3, 0)
 					x5 := xh_k_1[i].At(4, 0)
 					x6 := xh_k_1[i].At(5, 0)
+					u_k_1[i].Set(0, 0, float64(controllerRobotVelocitys[i].X))
+					u_k_1[i].Set(1, 0, float64(controllerRobotVelocitys[i].Y))
+					u_k_1[i].Set(2, 0, float64(controllerRobotVelocitys[i].Angular))
 
 					//サンプリング周期
 					dt := 1e-2
@@ -627,9 +630,11 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 
 					filtered_robot_x[i] = float32(xh_k.At(0, 0))
 					filtered_robot_y[i] = float32(xh_k.At(1, 0))
+					filtered_robot_theta[i] = float32(xh_k.At(2, 0))
 
-					fmt.Printf("robot:x %d: before: %f, filtered value: %f\n", i, robot.GetX(), filtered_robot_x[i])
-					fmt.Printf("robot:y %d: before: %f, filtered value: %f\n", i, robot.GetY(), filtered_robot_y[i])
+					// fmt.Printf("robot:x %d: before: %f, filtered value: %f\n", i, robot.GetX(), filtered_robot_x[i])
+					// fmt.Printf("robot:y %d: before: %f, filtered value: %f\n", i, robot.GetY(), filtered_robot_y[i])
+					// fmt.Printf("robot:theta %d: before: %f, filtered value: %f\n", i, robot.GetOrientation(), filtered_robot_theta[i])
 
 					robot_difference_X[i] = robot.GetX() - pre_robot_X[i]
 					robot_difference_Y[i] = robot.GetY() - pre_robot_Y[i]
