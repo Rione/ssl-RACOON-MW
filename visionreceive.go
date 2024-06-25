@@ -35,8 +35,6 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 	var modelBallX *models.SimpleModel
 	var modelBallY *models.SimpleModel
 
-<<<<<<< HEAD
-=======
 	// var sum float64 = 0
 	// var sumx float64 = 0
 	// var sumy float64 = 0
@@ -55,11 +53,10 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 	var P_k_1 [16]*mat.Dense
 	var u_k_1 [16]*mat.Dense
 
->>>>>>> dddbdb553d0428f82f5ae4178914110dfef12842
 	modelBallX = models.NewSimpleModel(t, 0.0, models.SimpleModelConfig{
 		InitialVariance:     100,
 		ProcessVariance:     0.1,
-		ObservationVariance: 0.1,
+		ObservationVariance: 0.18,
 	})
 	filterBallX := kalman.NewKalmanFilter(modelBallX)
 	//KalmanSmoother
@@ -68,7 +65,7 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 	modelBallY = models.NewSimpleModel(t, 0.0, models.SimpleModelConfig{
 		InitialVariance:     100,
 		ProcessVariance:     0.1,
-		ObservationVariance: 0.1,
+		ObservationVariance: 0.08,
 	})
 	filterBallY := kalman.NewKalmanFilter(modelBallY)
 	// smoothedBallY := kalman.NewKalmanSmoother(modelBallX)
@@ -94,30 +91,18 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 
 	Qv = mat.NewDense(6, 6, nil)
 	Qv.Scale(0.1, Qvx)
-	Qwx := mat.NewDiagDense(3, []float64{1, 1, 1})
-	Qw = mat.NewDense(3, 3, nil)
-	Qw.Scale(0.1, Qwx)
+
+	kalman_data := []float64{
+		0.185, 0.0, 0.0,
+		0.0, 0.084, 0.0,
+		0.0, 0.0, 8.3e-6,
+	}
+	Qw = mat.NewDense(3, 3, kalman_data)
 
 	for i := 0; i < 16; i++ {
-<<<<<<< HEAD
-		modelRobotX[i] = models.NewSimpleModel(t, 0.0, models.SimpleModelConfig{
-			InitialVariance:     100.0,
-			ProcessVariance:     0,
-			ObservationVariance: 0.1,
-		})
-		filterRobotX[i] = kalman.NewKalmanFilter(modelRobotX[i])
-
-		modelRobotY[i] = models.NewSimpleModel(t, 0.0, models.SimpleModelConfig{
-			InitialVariance:     100,
-			ProcessVariance:     0,
-			ObservationVariance: 0.1,
-		})
-		filterRobotY[i] = kalman.NewKalmanFilter(modelRobotY[i])
-=======
 		xh_k_1[i] = mat.DenseCopyOf(xh0)
 		P_k_1[i] = mat.NewDense(6, 6, nil)
 		u_k_1[i] = mat.NewDense(3, 1, nil)
->>>>>>> dddbdb553d0428f82f5ae4178914110dfef12842
 	}
 
 	var pre_framecounter int = 0
@@ -184,12 +169,9 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 	log.Printf("MAX CAMERAS: %d", maxcameras)
 	log.Printf("Receive Loop and Send Start: Vision addr %s", serverAddr)
 
-<<<<<<< HEAD
-=======
 	// f := new(os.File)
 	// f, _ = os.OpenFile("./ball_cords.txt", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 
->>>>>>> dddbdb553d0428f82f5ae4178914110dfef12842
 	for {
 		for i := 0; i < maxcameras; i++ {
 			var n int
