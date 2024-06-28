@@ -24,7 +24,7 @@ func controllerFeedback(chctrlfb chan bool) {
 	// コントローラからの通信をUDPで待ち受ける
 	serverAddr := &net.UDPAddr{
 		IP:   net.ParseIP("127.0.0.1"),
-		Port: 50001,
+		Port: 56940,
 	}
 
 	serverConn, err := net.ListenUDP("udp", serverAddr)
