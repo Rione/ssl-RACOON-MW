@@ -106,6 +106,7 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 	}
 
 	var pre_framecounter int = 0
+	var count int = 0
 
 	maxcameras = 0
 	framecounter = 0
@@ -366,7 +367,24 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 			}
 
 		}
-		framecounter++
+		// framecounter++
+		count++
+
+		var detection *pb_gen.SSL_DetectionFrame
+		var t_received float32
+		var frameinterval float32
+
+		t_received += float32(detection.GetTSent()) - float32(detection.GetTCapture())
+		log.Println("t_capture: ", detection.GetTCapture())
+		log.Println("t_sent: ", detection.GetTSent())
+		log.Println("t_received: ", t_received)
+		if t_received > 0 {
+			frameinterval += t_received / float32(count)
+			framecounter = int(1 / frameinterval)
+		}
+
+		//framecounterを出力
+		log.Println("framecounter: ", framecounter)
 
 		if framecounter-pre_framecounter > 0 {
 
@@ -412,26 +430,6 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 
 				filtered_ball_x = float32(modelBallX.Value(filterBallX.State()))
 				filtered_ball_y = float32(modelBallY.Value(filterBallY.State()))
-
-				// log.Println("filtered_ball: ", filtered_ball_x, filtered_ball_y)
-				// fmt.Printf("X: before: %f, filtered value: %f\n", ball.GetX(), modelBallX.Value(filterBallX.State()))
-				// fmt.Printf("Y: before: %f, filtered value: %f\n", ball.GetY(), modelBallY.Value(filterBallY.State()))
-				// fmt.Printf("%f\n", modelBallX.Value(filterBallX.State()))
-				// fmt.Printf("Y: %f\n", modelBallY.Value(filterBallY.State()))
-				// sum++
-
-				// if sum < 300 {
-				// 	f.WriteString(fmt.Sprintf("%f", ball.GetX()) + "," + fmt.Sprintf("%f", math.Abs(modelBallX.Value(filterBallX.State()))) + "\n")
-				// 	sumx += math.Abs(modelBallX.Value(filterBallX.State()))
-				// 	sumy += math.Abs(modelBallY.Value(filterBallY.State()))
-				// }
-				// if sum == 300 {
-				// 	averagex = sumx / 300
-				// 	averagey = sumy / 300
-				// }
-
-				// fmt.Printf("X: %f\n", averagex)
-				// fmt.Printf("Y: %f\n", averagey)
 
 			}
 
