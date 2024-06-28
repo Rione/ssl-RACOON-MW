@@ -115,8 +115,8 @@ func createEnemyInfo(i int, ourteam int) *pb_gen.Robot_Infos {
 }
 
 func createBallInfo() *pb_gen.Ball_Info {
-	var x float32 = ball.GetX()
-	var y float32 = ball.GetY()
+	var x float32 = filtered_ball_x
+	var y float32 = filtered_ball_y
 	var z float32 = ball.GetZ()
 
 	var sloperadian float32 = ball_slope_degree
