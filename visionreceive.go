@@ -106,7 +106,7 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 	}
 
 	var pre_framecounter int = 0
-	var count int = 0
+	// var count int = 0
 
 	maxcameras = 0
 	framecounter = 0
@@ -367,24 +367,24 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 			}
 
 		}
-		// framecounter++
-		count++
+		framecounter++
+		// count++
 
-		var detection *pb_gen.SSL_DetectionFrame
-		var t_received float32
-		var frameinterval float32
+		// var detection *pb_gen.SSL_DetectionFrame
+		// var t_received float32
+		// var frameinterval float32
 
-		t_received += float32(detection.GetTSent()) - float32(detection.GetTCapture())
-		log.Println("t_capture: ", detection.GetTCapture())
-		log.Println("t_sent: ", detection.GetTSent())
-		log.Println("t_received: ", t_received)
-		if t_received > 0 {
-			frameinterval += t_received / float32(count)
-			framecounter = int(1 / frameinterval)
-		}
+		// t_received += float32(detection.GetTSent()) - float32(detection.GetTCapture())
+		// log.Println("t_capture: ", detection.GetTCapture())
+		// log.Println("t_sent: ", detection.GetTSent())
+		// log.Println("t_received: ", t_received)
+		// if t_received > 0 {
+		// 	frameinterval += t_received / float32(count)
+		// 	framecounter = int(1 / frameinterval)
+		// }
 
-		//framecounterを出力
-		log.Println("framecounter: ", framecounter)
+		// //framecounterを出力
+		// log.Println("framecounter: ", framecounter)
 
 		if framecounter-pre_framecounter > 0 {
 
