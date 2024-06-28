@@ -1,56 +1,8 @@
 package main
 
 import (
-	"time"
-
 	"github.com/Rione-SSL/RACOON-MW/proto/pb_gen"
 )
-
-func createIMUSignal(i uint32, ourteam int) *pb_gen.GrSim_Robot_Command {
-	var robotid uint32 = uint32(i + 100)
-	var kickspeedx float32 = 0
-	var kickspeedz float32 = 0
-	var veltangent float32 = 0
-	var velnormal float32 = 0
-	var velangular float32 = bluerobots[i].GetOrientation()
-	if ourteam == 1 {
-		velangular = yellowrobots[i].GetOrientation()
-	}
-	var spinner bool = false
-	var wheelsspeed bool = false
-
-	pe := &pb_gen.GrSim_Robot_Command{
-		Id:          &robotid,
-		Kickspeedx:  &kickspeedx,
-		Kickspeedz:  &kickspeedz,
-		Veltangent:  &veltangent,
-		Velnormal:   &velnormal,
-		Velangular:  &velangular,
-		Spinner:     &spinner,
-		Wheelsspeed: &wheelsspeed,
-	}
-	return pe
-}
-
-func addIMUSignalToIMUSignals(imusignals []*pb_gen.GrSim_Robot_Command) *pb_gen.GrSim_Commands {
-	var timestamp float64 = float64(time.Now().UnixNano() / 1e6)
-	var isteamyellow bool = false
-
-	var ImuSignal []*pb_gen.GrSim_Robot_Command
-	for _, signal := range imusignals {
-		if signal != nil {
-			ImuSignal = append(ImuSignal, signal)
-		}
-	}
-
-	ImuSignals := &pb_gen.GrSim_Commands{
-		Timestamp:     &timestamp,
-		Isteamyellow:  &isteamyellow,
-		RobotCommands: ImuSignal,
-	}
-
-	return ImuSignals
-}
 
 func createRobotInfo(i int, ourteam int, simmode bool) *pb_gen.Robot_Infos {
 	var robotid uint32
@@ -59,18 +11,14 @@ func createRobotInfo(i int, ourteam int, simmode bool) *pb_gen.Robot_Infos {
 	var theta float32
 	if ourteam == 0 {
 		robotid = bluerobots[i].GetRobotId()
-		x = bluerobots[i].GetX()
-		// x = filtered_robot_x[i]
-		y = bluerobots[i].GetY()
-		// y = filtered_robot_y[i]
-		theta = bluerobots[i].GetOrientation()
+		x = filtered_robot_x[i]
+		y = filtered_robot_y[i]
+		theta = filtered_robot_theta[i]
 	} else {
 		robotid = yellowrobots[i].GetRobotId()
-		x = yellowrobots[i].GetX()
-		// x = filtered_robot_x[i]
-		y = yellowrobots[i].GetY()
-		// y = filtered_robot_y[i]
-		theta = yellowrobots[i].GetOrientation()
+		x = filtered_robot_x[i]
+		y = filtered_robot_y[i]
+		theta = filtered_robot_theta[i]
 	}
 	var diffx float32 = robot_difference_X[i]
 	var diffy float32 = robot_difference_Y[i]
@@ -167,8 +115,8 @@ func createEnemyInfo(i int, ourteam int) *pb_gen.Robot_Infos {
 }
 
 func createBallInfo() *pb_gen.Ball_Info {
-	var x float32 = ball.GetX()
-	var y float32 = ball.GetY()
+	var x float32 = filtered_ball_x
+	var y float32 = filtered_ball_y
 	var z float32 = ball.GetZ()
 
 	var sloperadian float32 = ball_slope_degree
