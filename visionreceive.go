@@ -622,9 +622,9 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 					// fmt.Printf("robot:y %d: before: %f, filtered value: %f\n", i, robot.GetY(), filtered_robot_y[i])
 					// fmt.Printf("robot:theta %d: before: %f, filtered value: %f\n", i, robot.GetOrientation(), filtered_robot_theta[i])
 
-					robot_difference_X[i] = robot.GetX() - pre_robot_X[i]
-					robot_difference_Y[i] = robot.GetY() - pre_robot_Y[i]
-					robot_difference_Theta[i] = robot.GetOrientation() - pre_robot_Theta[i]
+					robot_difference_X[i] = filtered_robot_x[i] - pre_robot_X[i]
+					robot_difference_Y[i] = filtered_robot_y[i] - pre_robot_Y[i]
+					robot_difference_Theta[i] = filtered_robot_theta[i] - pre_robot_Theta[i]
 
 					rdX64[i] = float64(robot_difference_X[i])
 					rdY64[i] = float64(robot_difference_Y[i])
@@ -641,12 +641,12 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 
 					robot_angular_velocity[i] = robot_difference_Theta[i] / 0.016
 
-					pre_robot_X[i] = robot.GetX()
-					pre_robot_Y[i] = robot.GetY()
-					pre_robot_Theta[i] = robot.GetOrientation()
+					pre_robot_X[i] = filtered_robot_x[i]
+					pre_robot_Y[i] = filtered_robot_y[i]
+					pre_robot_Theta[i] = filtered_robot_theta[i]
 
-					radian_ball_robot[i] = Calc_degree_normalize(Calc_degree(ball.GetX(), ball.GetY(), robot.GetX(), robot.GetY()) - robot.GetOrientation())
-					distance_ball_robot[i] = Calc_distance(ball.GetX(), ball.GetY(), robot.GetX(), robot.GetY())
+					radian_ball_robot[i] = Calc_degree_normalize(Calc_degree(filtered_ball_x, filtered_ball_y, filtered_robot_x[i], filtered_robot_y[i]) - filtered_robot_theta[i])
+					distance_ball_robot[i] = Calc_distance(filtered_ball_x, filtered_ball_y, filtered_robot_x[i], filtered_robot_y[i])
 
 					//Print microtime and robot 0 cords to text file
 					if i == 0 && debug_for_sono {
