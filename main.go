@@ -110,7 +110,7 @@ func CheckVisionRobot(chvisrobot chan bool) {
 	}
 }
 
-func RunServer(chserver chan bool, reportrate uint, ourteam int, goalpose int, debug bool, simmode bool) {
+func RunServer(chserver chan bool, reportrate uint, ourteam int, goalpose int, debug bool, simmode bool, ignore_ref_mismatch bool) {
 	ipv4 := NW_AI_IPADDR
 	port := NW_AI_PORT
 	port_controller := NW_AI_PORT_CONTROLLER
@@ -171,7 +171,7 @@ func RunServer(chserver chan bool, reportrate uint, ourteam int, goalpose int, d
 		RobotIpInfo := addRobotIPInfoToRobotIPInfos(robotip_infos)
 
 		GeometryInfo := createGeometryInfo()
-		RefereeInfo := createRefInfo(ourteam, goalpose)
+		RefereeInfo := createRefInfo(ourteam, goalpose, ignore_ref_mismatch)
 		OtherInfo := createOtherInfo(int32(goalpose))
 
 		//log.Println(OtherInfo.GetAttackDirection())
@@ -206,18 +206,19 @@ func RunServer(chserver chan bool, reportrate uint, ourteam int, goalpose int, d
 func main() {
 
 	var (
-		visionport        = flag.Int("p", 10006, "Vision Multicast Port Number")
-		ourteam           = flag.String("t", "blue", "Our Team (blue or yellow)")
-		goalpos           = flag.String("g", "N", "Attack Direction(Enemy goal) Negative or Positive (N or P)")
-		reportrate        = flag.Uint("r", 16, "How often report to RACOON-AI? (milliseconds)")
-		debug             = flag.Bool("d", false, "Show All Send Packet")
-		simmode           = flag.Bool("s", false, "Simulation Mode (Emulate Ball Sensor)")
-		replay            = flag.Bool("replay", false, "Replay All Packet")
-		halfswitch        = flag.String("c", "F", "Where to use (N, P, F) F to Full")
-		ballmovethreshold = flag.Float64("b", 1000, "Ball Detect Threshold (Default 1000")
-		nw_robot          = flag.String("rif", "none", "NW Robot Update Interface Name (ex. en0)")
-		nw_vision         = flag.String("vif", "none", "NW Vision and Referee receive Interface Name (ex. en1)")
-		debug_for_sono    = flag.Bool("df", false, "Print ID0 Robot Cordination for Sono")
+		visionport          = flag.Int("p", 10006, "Vision Multicast Port Number")
+		ourteam             = flag.String("t", "blue", "Our Team (blue or yellow)")
+		goalpos             = flag.String("g", "N", "Attack Direction(Enemy goal) Negative or Positive (N or P)")
+		reportrate          = flag.Uint("r", 16, "How often report to RACOON-AI? (milliseconds)")
+		debug               = flag.Bool("d", false, "Show All Send Packet")
+		simmode             = flag.Bool("s", false, "Simulation Mode (Emulate Ball Sensor)")
+		replay              = flag.Bool("replay", false, "Replay All Packet")
+		halfswitch          = flag.String("c", "F", "Where to use (N, P, F) F to Full")
+		ballmovethreshold   = flag.Float64("b", 1000, "Ball Detect Threshold (Default 1000")
+		nw_robot            = flag.String("rif", "none", "NW Robot Update Interface Name (ex. en0)")
+		nw_vision           = flag.String("vif", "none", "NW Vision and Referee receive Interface Name (ex. en1)")
+		debug_for_sono      = flag.Bool("df", false, "Print ID0 Robot Cordination for Sono")
+		ignore_ref_mismatch = flag.Bool("igref", false, "Ignore Referee Team Color & Attack Direction Mismatch Errors")
 	)
 	//OUR TEAM 0 = blue
 	//OUR TEAM 1 = yellow
@@ -273,7 +274,7 @@ func main() {
 	chbattery := make(chan bool)
 
 	go Update(chupdate)
-	go RunServer(chserver, *reportrate, ourteam_n, goalpos_n, *debug, *simmode)
+	go RunServer(chserver, *reportrate, ourteam_n, goalpos_n, *debug, *simmode, *ignore_ref_mismatch)
 	go VisionReceive(chvision, *visionport, ourteam_n, goalpos_n, *simmode, *replay, halfswitch_n, *debug_for_sono)
 	go CheckVisionRobot(chvisrobot)
 	go FPSCounter(chfps, ourteam_n)

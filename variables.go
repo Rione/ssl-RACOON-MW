@@ -25,28 +25,15 @@ var balldetect [16]bool
 var visionwrapper [16]*pb_gen.SSL_WrapperPacket
 var visiondetection [16]*pb_gen.SSL_DetectionFrame
 
-var trackerwrapper [16]*pb_gen.TrackerWrapperPacket
-var trackerdetection [16]*pb_gen.TrackedFrame
-
 var geometrydata *pb_gen.SSL_GeometryData
 var left_geo_goal_x float32
 var left_geo_goal_y float32
 
-var num_bluerobots int
-var num_yellowrobots int
-
 var bluerobots [16]*pb_gen.SSL_DetectionRobot
 var yellowrobots [16]*pb_gen.SSL_DetectionRobot
 
-var trackedblue [16]*pb_gen.TrackedRobot
-var trackedyellow [16]*pb_gen.TrackedRobot
-
 var ref_command *pb_gen.Referee
 var ball *pb_gen.SSL_DetectionBall
-
-var trackedball *pb_gen.TrackedBall
-
-var only_use_tracker bool = false
 
 var maxcameras int
 

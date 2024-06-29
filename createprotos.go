@@ -54,18 +54,6 @@ func createRobotInfo(i int, ourteam int, simmode bool) *pb_gen.Robot_Infos {
 	return pe
 }
 
-func addRobotIpToRobotIps(robotip [16]*pb_gen.RobotIP_Infos) []*pb_gen.RobotIP_Infos {
-	RobotIps := []*pb_gen.RobotIP_Infos{}
-
-	for _, robot := range robotip {
-		if robot != nil {
-			RobotIps = append(RobotIps, robot)
-		}
-	}
-
-	return RobotIps
-}
-
 func addRobotInfoToRobotInfos(robotinfo [16]*pb_gen.Robot_Infos) []*pb_gen.Robot_Infos {
 	RobotInfos := []*pb_gen.Robot_Infos{}
 
@@ -226,7 +214,7 @@ func createOtherInfo(goalpos_n int32) *pb_gen.Other_Infos {
 	return pe
 }
 
-func createRefInfo(ourteam int, attackdirection int) *pb_gen.Referee_Info {
+func createRefInfo(ourteam int, attackdirection int, ignore_ref_mismatch bool) *pb_gen.Referee_Info {
 	var yellowcards uint32
 	var redcards uint32
 	var command *pb_gen.Referee_Info_Command
@@ -257,24 +245,26 @@ func createRefInfo(ourteam int, attackdirection int) *pb_gen.Referee_Info {
 			teaminfo_their = (*pb_gen.Referee_Info_TeamInfo)(ref_command.Blue)
 		}
 
-		// Check if the team color is correct
-		if ourteam == 0 && ref_command.GetYellow().GetName() == "Ri-one" {
-			log.Println("[MW WARNING!!] INCORRECT TEAM COLOR! Referee says (Ri-one == YELLOW)")
-		} else if ourteam == 1 && ref_command.GetBlue().GetName() == "Ri-one" {
-			log.Println("[MW WARNING!!] INCORRECT TEAM COLOR! Referee says (Ri-one == Blue)")
-		}
+		if !ignore_ref_mismatch {
+			// Check if the team color is correct
+			if ourteam == 0 && ref_command.GetYellow().GetName() == "Ri-one" {
+				log.Println("[MW WARNING!!] INCORRECT TEAM COLOR! Referee says (Ri-one == YELLOW)")
+			} else if ourteam == 1 && ref_command.GetBlue().GetName() == "Ri-one" {
+				log.Println("[MW WARNING!!] INCORRECT TEAM COLOR! Referee says (Ri-one == Blue)")
+			}
 
-		// Check if the attack direction is correct
-		if ourteam == 0 && *ref_command.BlueTeamOnPositiveHalf && attackdirection == 1 {
-			log.Println("[MW WARNING!!] INCORRECT ATTACK DIRECTION! Referee says (BlueTeamOnPositiveHalf == true)")
-		} else if ourteam == 1 && !*ref_command.BlueTeamOnPositiveHalf && attackdirection == 1 {
-			log.Println("[MW WARNING!!] INCORRECT ATTACK DIRECTION! Referee says (BlueTeamOnPositiveHalf == false)")
-		}
+			// Check if the attack direction is correct
+			if ourteam == 0 && *ref_command.BlueTeamOnPositiveHalf && attackdirection == 1 {
+				log.Println("[MW WARNING!!] INCORRECT ATTACK DIRECTION! Referee says (BlueTeamOnPositiveHalf == true)")
+			} else if ourteam == 1 && !*ref_command.BlueTeamOnPositiveHalf && attackdirection == 1 {
+				log.Println("[MW WARNING!!] INCORRECT ATTACK DIRECTION! Referee says (BlueTeamOnPositiveHalf == false)")
+			}
 
-		if ourteam == 0 && !*ref_command.BlueTeamOnPositiveHalf && attackdirection == -1 {
-			log.Println("[MW WARNING!!] INCORRECT ATTACK DIRECTION! Referee says (BlueTeamOnPositiveHalf == true)")
-		} else if ourteam == 1 && *ref_command.BlueTeamOnPositiveHalf && attackdirection == -1 {
-			log.Println("[MW WARNING!!] INCORRECT ATTACK DIRECTION! Referee says (BlueTeamOnPositiveHalf == false)")
+			if ourteam == 0 && !*ref_command.BlueTeamOnPositiveHalf && attackdirection == -1 {
+				log.Println("[MW WARNING!!] INCORRECT ATTACK DIRECTION! Referee says (BlueTeamOnPositiveHalf == true)")
+			} else if ourteam == 1 && *ref_command.BlueTeamOnPositiveHalf && attackdirection == -1 {
+				log.Println("[MW WARNING!!] INCORRECT ATTACK DIRECTION! Referee says (BlueTeamOnPositiveHalf == false)")
+			}
 		}
 
 	} else {

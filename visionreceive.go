@@ -238,27 +238,21 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 				}
 			}
 
-			num_yellowrobots = 0
-			num_bluerobots = 0
-
 			// Get Blue Robots
 			for _, robot := range packet.Detection.GetRobotsBlue() {
 				switch halfswitch_n {
 				case 0:
-					num_bluerobots++
 					bluerobots[robot.GetRobotId()] = robot
 					visible_in_vision_b[robot.GetRobotId()] = true
 
 				case 1:
 					if robot.GetX() > 0 {
-						num_bluerobots++
 						bluerobots[robot.GetRobotId()] = robot
 						visible_in_vision_b[robot.GetRobotId()] = true
 					}
 
 				case -1:
 					if robot.GetX() <= 0 {
-						num_bluerobots++
 						bluerobots[robot.GetRobotId()] = robot
 						visible_in_vision_b[robot.GetRobotId()] = true
 					}
@@ -269,20 +263,17 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 			for _, robot := range packet.Detection.GetRobotsYellow() {
 				switch halfswitch_n {
 				case 0:
-					num_yellowrobots++
 					yellowrobots[robot.GetRobotId()] = robot
 					visible_in_vision_y[robot.GetRobotId()] = true
 
 				case 1:
 					if robot.GetX() > 0 {
-						num_yellowrobots++
 						yellowrobots[robot.GetRobotId()] = robot
 						visible_in_vision_y[robot.GetRobotId()] = true
 					}
 
 				case -1:
 					if robot.GetX() <= 0 {
-						num_yellowrobots++
 						yellowrobots[robot.GetRobotId()] = robot
 						visible_in_vision_y[robot.GetRobotId()] = true
 					}

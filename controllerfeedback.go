@@ -56,4 +56,6 @@ func controllerFeedback(chctrlfb chan bool) {
 
 		mutex.Unlock()
 	}
+
+	chctrlfb <- true
 }
