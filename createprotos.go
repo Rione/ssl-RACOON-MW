@@ -1,6 +1,8 @@
 package main
 
 import (
+	"log"
+
 	"github.com/Rione-SSL/RACOON-MW/proto/pb_gen"
 )
 
@@ -253,6 +255,13 @@ func createRefInfo(ourteam int) *pb_gen.Referee_Info {
 			redcards = ref_command.Yellow.GetRedCards()
 			teaminfo_our = (*pb_gen.Referee_Info_TeamInfo)(ref_command.Yellow)
 			teaminfo_their = (*pb_gen.Referee_Info_TeamInfo)(ref_command.Blue)
+		}
+
+		// Check if the team color is correct
+		if ourteam == 0 && ref_command.GetYellow().GetName() == "Ri-one" {
+			log.Println("[MW WARNING!!] INCORRECT TEAM COLOR! Referee says (Ri-one == BLUE)")
+		} else if ourteam == 1 && ref_command.GetBlue().GetName() == "Ri-one" {
+			log.Println("[MW WARNING!!] INCORRECT TEAM COLOR! Referee says (Ri-one == YELLOW)")
 		}
 
 	} else {
