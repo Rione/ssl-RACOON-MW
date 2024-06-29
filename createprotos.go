@@ -26,6 +26,10 @@ func createRobotInfo(i int, ourteam int, simmode bool) *pb_gen.Robot_Infos {
 
 	var batt float32 = battery_voltage[i]
 	var online bool = robot_online[i]
+	if simmode {
+		batt = 16.5
+		online = true
+	}
 	pe := &pb_gen.Robot_Infos{
 		RobotId:           &robotid,
 		X:                 &x,
