@@ -174,6 +174,12 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 	// f, _ = os.OpenFile("./ball_cords.txt", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 
 	for {
+		var visible_in_vision_b [16]bool
+		var visible_in_vision_y [16]bool
+		for i := 0; i < 16; i++ {
+			visible_in_vision_b[i] = false
+			visible_in_vision_y[i] = false
+		}
 		for i := 0; i < maxcameras; i++ {
 			var n int
 			var err error
@@ -232,15 +238,8 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 				}
 			}
 
-			var visible_in_vision_b [16]bool
-			var visible_in_vision_y [16]bool
 			num_yellowrobots = 0
 			num_bluerobots = 0
-
-			for i := 0; i < 16; i++ {
-				visible_in_vision_b[i] = false
-				visible_in_vision_y[i] = false
-			}
 
 			// Get Blue Robots
 			for _, robot := range packet.Detection.GetRobotsBlue() {

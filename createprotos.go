@@ -25,7 +25,7 @@ func createRobotInfo(i int, ourteam int, simmode bool) *pb_gen.Robot_Infos {
 	var difftheta float32 = robot_difference_Theta[i]
 
 	var batt float32 = battery_voltage[i]
-	var online bool = true
+	var online bool = robot_online[i]
 	pe := &pb_gen.Robot_Infos{
 		RobotId:           &robotid,
 		X:                 &x,
