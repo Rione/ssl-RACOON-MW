@@ -29,7 +29,8 @@ jobs:
     - name: Run GoReleaser 🚀
       uses: goreleaser/goreleaser-action@v2
       with:
-        args: release --rm-dist
+        args: release --clean
+        version: v1.18.2
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         GPG_FINGERPRINT: ${{ steps.import_gpg.outputs.fingerprint }}
