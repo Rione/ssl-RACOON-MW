@@ -259,9 +259,9 @@ func createRefInfo(ourteam int) *pb_gen.Referee_Info {
 
 		// Check if the team color is correct
 		if ourteam == 0 && ref_command.GetYellow().GetName() == "Ri-one" {
-			log.Println("[MW WARNING!!] INCORRECT TEAM COLOR! Referee says (Ri-one == BLUE)")
-		} else if ourteam == 1 && ref_command.GetBlue().GetName() == "Ri-one" {
 			log.Println("[MW WARNING!!] INCORRECT TEAM COLOR! Referee says (Ri-one == YELLOW)")
+		} else if ourteam == 1 && ref_command.GetBlue().GetName() == "Ri-one" {
+			log.Println("[MW WARNING!!] INCORRECT TEAM COLOR! Referee says (Ri-one == Blue)")
 		}
 
 	} else {
