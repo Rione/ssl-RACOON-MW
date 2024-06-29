@@ -171,7 +171,7 @@ func RunServer(chserver chan bool, reportrate uint, ourteam int, goalpose int, d
 		RobotIpInfo := addRobotIPInfoToRobotIPInfos(robotip_infos)
 
 		GeometryInfo := createGeometryInfo()
-		RefereeInfo := createRefInfo(ourteam)
+		RefereeInfo := createRefInfo(ourteam, goalpose)
 		OtherInfo := createOtherInfo(int32(goalpose))
 
 		//log.Println(OtherInfo.GetAttackDirection())

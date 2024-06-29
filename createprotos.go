@@ -226,7 +226,7 @@ func createOtherInfo(goalpos_n int32) *pb_gen.Other_Infos {
 	return pe
 }
 
-func createRefInfo(ourteam int) *pb_gen.Referee_Info {
+func createRefInfo(ourteam int, attackdirection int) *pb_gen.Referee_Info {
 	var yellowcards uint32
 	var redcards uint32
 	var command *pb_gen.Referee_Info_Command
@@ -262,6 +262,19 @@ func createRefInfo(ourteam int) *pb_gen.Referee_Info {
 			log.Println("[MW WARNING!!] INCORRECT TEAM COLOR! Referee says (Ri-one == YELLOW)")
 		} else if ourteam == 1 && ref_command.GetBlue().GetName() == "Ri-one" {
 			log.Println("[MW WARNING!!] INCORRECT TEAM COLOR! Referee says (Ri-one == Blue)")
+		}
+
+		// Check if the attack direction is correct
+		if ourteam == 0 && *ref_command.BlueTeamOnPositiveHalf && attackdirection == 1 {
+			log.Println("[MW WARNING!!] INCORRECT ATTACK DIRECTION! Referee says (BlueTeamOnPositiveHalf == true)")
+		} else if ourteam == 1 && !*ref_command.BlueTeamOnPositiveHalf && attackdirection == 1 {
+			log.Println("[MW WARNING!!] INCORRECT ATTACK DIRECTION! Referee says (BlueTeamOnPositiveHalf == false)")
+		}
+
+		if ourteam == 0 && !*ref_command.BlueTeamOnPositiveHalf && attackdirection == -1 {
+			log.Println("[MW WARNING!!] INCORRECT ATTACK DIRECTION! Referee says (BlueTeamOnPositiveHalf == true)")
+		} else if ourteam == 1 && *ref_command.BlueTeamOnPositiveHalf && attackdirection == -1 {
+			log.Println("[MW WARNING!!] INCORRECT ATTACK DIRECTION! Referee says (BlueTeamOnPositiveHalf == false)")
 		}
 
 	} else {
