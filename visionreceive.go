@@ -624,7 +624,7 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 
 					robot_difference_X[i] = filtered_robot_x[i] - pre_robot_X[i]
 					robot_difference_Y[i] = filtered_robot_y[i] - pre_robot_Y[i]
-					robot_difference_Theta[i] = filtered_robot_theta[i] - pre_robot_Theta[i]
+					robot_difference_Theta[i] = Calc_degree_normalize(filtered_robot_theta[i] - pre_robot_Theta[i])
 
 					rdX64[i] = float64(robot_difference_X[i])
 					rdY64[i] = float64(robot_difference_Y[i])
