@@ -249,24 +249,21 @@ func createRefInfo(ourteam int, attackdirection int, ignore_ref_mismatch bool) *
 			// Check if the team color is correct
 			if ourteam == 0 && ref_command.GetYellow().GetName() == "Ri-one" {
 				log.Println("[MW WARNING!!] INCORRECT TEAM COLOR! Referee says (Ri-one == YELLOW)")
-				ref_mismatch = true
 			} else if ourteam == 1 && ref_command.GetBlue().GetName() == "Ri-one" {
 				log.Println("[MW WARNING!!] INCORRECT TEAM COLOR! Referee says (Ri-one == Blue)")
-				ref_mismatch = true
-			} else if ourteam == 0 && *ref_command.BlueTeamOnPositiveHalf && attackdirection == 1 {
+			}
+
+			// Check if the attack direction is correct
+			if ourteam == 0 && *ref_command.BlueTeamOnPositiveHalf && attackdirection == 1 {
 				log.Println("[MW WARNING!!] INCORRECT ATTACK DIRECTION! Referee says (BlueTeamOnPositiveHalf == true)")
-				ref_mismatch = true
 			} else if ourteam == 1 && !*ref_command.BlueTeamOnPositiveHalf && attackdirection == 1 {
 				log.Println("[MW WARNING!!] INCORRECT ATTACK DIRECTION! Referee says (BlueTeamOnPositiveHalf == false)")
-				ref_mismatch = true
-			} else if ourteam == 0 && !*ref_command.BlueTeamOnPositiveHalf && attackdirection == -1 {
+			}
+
+			if ourteam == 0 && !*ref_command.BlueTeamOnPositiveHalf && attackdirection == -1 {
 				log.Println("[MW WARNING!!] INCORRECT ATTACK DIRECTION! Referee says (BlueTeamOnPositiveHalf == true)")
-				ref_mismatch = true
 			} else if ourteam == 1 && *ref_command.BlueTeamOnPositiveHalf && attackdirection == -1 {
 				log.Println("[MW WARNING!!] INCORRECT ATTACK DIRECTION! Referee says (BlueTeamOnPositiveHalf == false)")
-				ref_mismatch = true
-			} else {
-				ref_mismatch = false
 			}
 		}
 

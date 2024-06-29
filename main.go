@@ -1,31 +1,19 @@
 package main
 
 import (
-	"bytes"
-	"encoding/base64"
 	"flag"
 	"fmt"
-	"io"
 	"log"
 	"math"
 	"net"
 	"time"
 
 	"github.com/Rione-SSL/RACOON-MW/proto/pb_gen"
-	"github.com/faiface/beep"
-	"github.com/faiface/beep/mp3"
-	"github.com/faiface/beep/speaker"
 	"google.golang.org/protobuf/proto"
 )
 
-func FPSCounter(chfps chan bool, ourteam int, with_sound bool) {
+func FPSCounter(chfps chan bool, ourteam int) {
 	imu_reset_time = time.Now()
-	// Decode the base64 encoded string
-	decoded, err := base64.StdEncoding.DecodeString(sound_base64)
-	if err != nil {
-		log.Fatal(err)
-	}
-
 	for {
 		//Calculate Online Robot IDs
 		var online_robot_id_str string
@@ -86,17 +74,6 @@ func FPSCounter(chfps chan bool, ourteam int, with_sound bool) {
 			isvisionrecv = false
 			secperframe = 100000
 			log.Printf("Vision: %t, Connected Robots: %s", isvisionrecv, online_robot_id_str)
-		}
-
-		if ref_mismatch && with_sound {
-			rc := io.NopCloser(bytes.NewReader(decoded))
-			st, format, err := mp3.Decode(rc)
-			if err != nil {
-				log.Fatal(err)
-			}
-			speaker.Init(format.SampleRate, format.SampleRate.N(time.Second/10))
-			speaker.Play(beep.Seq(st, beep.Callback(func() {
-			})))
 		}
 
 		time.Sleep(1 * time.Second)
@@ -226,8 +203,6 @@ func RunServer(chserver chan bool, reportrate uint, ourteam int, goalpose int, d
 	chserver <- true
 }
 
-var format beep.Format
-
 func main() {
 
 	var (
@@ -244,7 +219,6 @@ func main() {
 		nw_vision           = flag.String("vif", "none", "NW Vision and Referee receive Interface Name (ex. en1)")
 		debug_for_sono      = flag.Bool("df", false, "Print ID0 Robot Cordination for Sono")
 		ignore_ref_mismatch = flag.Bool("igref", false, "Ignore Referee Team Color & Attack Direction Mismatch Errors")
-		with_sound          = flag.Bool("ws", false, "With Sound Notification")
 	)
 	//OUR TEAM 0 = blue
 	//OUR TEAM 1 = yellow
@@ -303,7 +277,7 @@ func main() {
 	go RunServer(chserver, *reportrate, ourteam_n, goalpos_n, *debug, *simmode, *ignore_ref_mismatch)
 	go VisionReceive(chvision, *visionport, ourteam_n, goalpos_n, *simmode, *replay, halfswitch_n, *debug_for_sono)
 	go CheckVisionRobot(chvisrobot)
-	go FPSCounter(chfps, ourteam_n, *with_sound)
+	go FPSCounter(chfps, ourteam_n)
 	go RefereeClient(chref)
 	go controllerFeedback(chctrlfb)
 	go RobotIPList(chrobotip)
