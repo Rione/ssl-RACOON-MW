@@ -101,3 +101,6 @@ var ball_y_history []float32
 var imu_reset_time time.Time
 
 var robot_online [16]bool
+
+var teamcolor_from_ref int = -1
+var attack_direction_from_ref int = 0
