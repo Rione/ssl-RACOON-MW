@@ -19,7 +19,8 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmode bool, replay bool, halfswitch_n int, debug_for_sono bool) {
+func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmode bool, replay bool, halfswitch_n int, debug_for_sono bool, matchmode bool) {
+
 	var pre_ball_X float32
 	var pre_ball_Y float32
 	var pre_robot_X [16]float32
@@ -180,6 +181,12 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 			visible_in_vision_b[i] = false
 			visible_in_vision_y[i] = false
 		}
+
+		//チームカラー検査
+		if teamcolor_from_ref != -1 && matchmode {
+			ourteam = teamcolor_from_ref
+		}
+
 		for i := 0; i < maxcameras; i++ {
 			var n int
 			var err error

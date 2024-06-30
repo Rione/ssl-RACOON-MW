@@ -189,10 +189,15 @@ func createGeometryInfo() *pb_gen.Geometry_Info {
 	return pe
 }
 
-func createOtherInfo(goalpos_n int32) *pb_gen.Other_Infos {
+func createOtherInfo(goalpos_n int32, ourteam int, match_mode bool, grsim_send_port int, simmode bool, halfswitch int) *pb_gen.Other_Infos {
 	var numofcameras int32 = int32(maxcameras)
 	var numofourrobots int32
 	var numofenemyrobots int32
+	var teamcolor int
+	var isYellow bool
+	var isHalfcourt bool
+	var grSimSendPort uint32 = uint32(grsim_send_port)
+	var attackdir int32
 	for i := 0; i < 16; i++ {
 		if ourrobot_is_visible[i] {
 			numofourrobots++
@@ -202,19 +207,49 @@ func createOtherInfo(goalpos_n int32) *pb_gen.Other_Infos {
 		}
 	}
 
+	isReal := !simmode
+
+	if match_mode {
+		//マッチモードの場合は、起動フラグのourteamを無視して、Refereeから取得したチームカラーを使う
+		//また、本番モードはisRealをtrueにする
+		isReal = true
+		teamcolor = teamcolor_from_ref
+		attackdir = int32(attack_direction_from_ref)
+	} else {
+		//マッチモードでない場合は、起動フラグのourteamをそのまま使う
+		teamcolor = ourteam
+		attackdir = goalpos_n
+	}
+
+	if teamcolor == 1 { //YELLOW
+		isYellow = true
+	} else { //BLUE
+		isYellow = false
+	}
+
+	if halfswitch == 1 || halfswitch == -1 {
+		isHalfcourt = true
+	} else {
+		isHalfcourt = false
+	}
+
 	pe := &pb_gen.Other_Infos{
-		NumOfCameras:     &numofcameras,
-		NumOfOurRobots:   &numofourrobots,
-		NumOfEnemyRobots: &numofenemyrobots,
-		Secperframe:      &secperframe,
-		IsVisionRecv:     &isvisionrecv,
-		AttackDirection:  &goalpos_n,
-		IsBallMoving:     &is_ball_moving,
+		NumOfCameras:           &numofcameras,
+		NumOfOurRobots:         &numofourrobots,
+		NumOfEnemyRobots:       &numofenemyrobots,
+		Secperframe:            &secperframe,
+		IsVisionRecv:           &isvisionrecv,
+		AttackDirection:        &attackdir,
+		IsBallMoving:           &is_ball_moving,
+		IsReal:                 &isReal,
+		IsTeamYellow:           &isYellow,
+		IsHalfCourt:            &isHalfcourt,
+		GrsimCommandListenPort: &grSimSendPort,
 	}
 	return pe
 }
 
-func createRefInfo(ourteam int, attackdirection int, ignore_ref_mismatch bool) *pb_gen.Referee_Info {
+func createRefInfo(ourteam int, attackdirection int, ignore_ref_mismatch bool, goal_keeper uint, match_mode bool) *pb_gen.Referee_Info {
 	var yellowcards uint32
 	var redcards uint32
 	var command *pb_gen.Referee_Info_Command
@@ -225,6 +260,8 @@ func createRefInfo(ourteam int, attackdirection int, ignore_ref_mismatch bool) *
 	var bpX float32
 	var bpY float32
 	var gameevent []*pb_gen.GameEvent
+
+	goal_keeper_id := uint32(goal_keeper)
 
 	if ref_command != nil {
 		command = (*pb_gen.Referee_Info_Command)(ref_command.Command)
@@ -245,7 +282,7 @@ func createRefInfo(ourteam int, attackdirection int, ignore_ref_mismatch bool) *
 			teaminfo_their = (*pb_gen.Referee_Info_TeamInfo)(ref_command.Blue)
 		}
 
-		if !ignore_ref_mismatch {
+		if !ignore_ref_mismatch && !match_mode {
 			// Check if the team color is correct
 			if ourteam == 0 && ref_command.GetYellow().GetName() == "Ri-one" {
 				log.Println("[MW WARNING!!] INCORRECT TEAM COLOR! Referee says (Ri-one == YELLOW)")
@@ -267,23 +304,48 @@ func createRefInfo(ourteam int, attackdirection int, ignore_ref_mismatch bool) *
 			}
 		}
 
+		if match_mode {
+			// Team Color を チーム名 「Ri-one」から取り出す
+			if ref_command.GetYellow().GetName() == "Ri-one" && ref_command.GetBlue().GetName() == "Ri-one" {
+				log.Println("[MW WARNING!!] Team Name is Both Ri-one! Referee says (Ri-one == YELLOW) and (Ri-one == BLUE). Forced to set team color to BLUE.")
+			}
+			if ref_command.GetBlue().GetName() == "Ri-one" {
+				teamcolor_from_ref = 0
+				goal_keeper_id = ref_command.GetBlue().GetGoalkeeper()
+				if ref_command.GetBlueTeamOnPositiveHalf() == true {
+					attack_direction_from_ref = -1
+				} else {
+					attack_direction_from_ref = 1
+				}
+			} else if ref_command.GetYellow().GetName() == "Ri-one" {
+				teamcolor_from_ref = 1
+				goal_keeper_id = ref_command.GetYellow().GetGoalkeeper()
+				if ref_command.GetBlueTeamOnPositiveHalf() == true {
+					attack_direction_from_ref = 1
+				} else {
+					attack_direction_from_ref = -1
+				}
+			}
+		}
+
 	} else {
 		yellowcards = 0
 		redcards = 0
 	}
 
 	pe := &pb_gen.Referee_Info{
-		Command:        command,
-		Stage:          stage,
-		TeaminfoOur:    teaminfo_our,
-		TeaminfoTheir:  teaminfo_their,
-		YellowCards:    &yellowcards,
-		RedCards:       &redcards,
-		Event:          gameevent,
-		PreCommand:     last_command,
-		NextCommand:    next_command,
-		BallPlacementX: &bpX,
-		BallPlacementY: &bpY,
+		Command:         command,
+		Stage:           stage,
+		TeaminfoOur:     teaminfo_our,
+		TeaminfoTheir:   teaminfo_their,
+		YellowCards:     &yellowcards,
+		RedCards:        &redcards,
+		Event:           gameevent,
+		PreCommand:      last_command,
+		NextCommand:     next_command,
+		BallPlacementX:  &bpX,
+		BallPlacementY:  &bpY,
+		OurGoalkeeperId: &goal_keeper_id,
 	}
 	return pe
 }
