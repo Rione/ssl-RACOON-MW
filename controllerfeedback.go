@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"net"
 	"sync"
 
@@ -47,13 +48,16 @@ func controllerFeedback(chctrlfb chan bool) {
 			controllerRobotVelocitys[i] = RobotVelocity{}
 		}
 		for _, command := range packet.Commands.RobotCommands {
-			controllerRobotVelocitys[command.GetId()] = RobotVelocity{
-				X:       command.GetVeltangent(),
-				Y:       command.GetVelnormal(),
-				Angular: command.GetVelangular(),
+			if command.GetId() > 0 || command.GetId() < 16 {
+				controllerRobotVelocitys[command.GetId()] = RobotVelocity{
+					X:       command.GetVeltangent(),
+					Y:       command.GetVelnormal(),
+					Angular: command.GetVelangular(),
+				}
+			} else {
+				log.Println("[MW-Controller-Feedback] Invalid robot id: ", command.GetId())
 			}
 		}
-
 		mutex.Unlock()
 	}
 
