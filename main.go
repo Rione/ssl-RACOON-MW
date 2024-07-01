@@ -212,6 +212,7 @@ func main() {
 
 	var (
 		visionport          = flag.Int("p", 10006, "Vision Multicast Port Number. Force 10006 when match mode is true")
+		gcport              = flag.Int("gcp", 10003, "Game Controller Listen Port Number (Default 10003) Force 10003 when match mode is true")
 		ourteam             = flag.String("t", "blue", "Our Team (blue or yellow). Disable when match mode is true")
 		goalpos             = flag.String("g", "N", "Attack Direction(Enemy goal) Negative or Positive (N or P)")
 		reportrate          = flag.Uint("r", 16, "How often report to RACOON-AI? (milliseconds)")
@@ -252,6 +253,7 @@ func main() {
 
 	if *match_mode {
 		*visionport = 10006
+		*gcport = 10003
 		*ignore_ref_mismatch = false
 		*simmode = false
 		*halfswitch = "F"
@@ -297,7 +299,7 @@ func main() {
 	go VisionReceive(chvision, *visionport, ourteam_n, goalpos_n, *simmode, *replay, halfswitch_n, *debug_for_sono, *match_mode)
 	go CheckVisionRobot(chvisrobot)
 	go FPSCounter(chfps, ourteam_n)
-	go RefereeClient(chref)
+	go RefereeClient(chref, *gcport)
 	go controllerFeedback(chctrlfb)
 	go RobotIPList(chrobotip)
 
