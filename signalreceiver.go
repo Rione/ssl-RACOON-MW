@@ -1,9 +1,7 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"net"
 	"net/http"
@@ -13,6 +11,8 @@ import (
 	"github.com/Rione-SSL/RACOON-MW/proto/pb_gen"
 	"google.golang.org/protobuf/proto"
 )
+
+var cap_power [16]uint8
 
 func Update(chupdate chan bool) {
 	serverAddr := &net.UDPAddr{
@@ -47,7 +47,9 @@ func Update(chupdate chan bool) {
 			log.Println("Robot ID", packet.GetRobotId(), " is associated with ", addr.IP.String())
 		}
 
-		// log.Printf("State change signal recived from %s ", addr)
+		battery_voltage[packet.GetRobotId()] = float32(packet.GetBatteryVoltage())
+		cap_power[packet.GetRobotId()] = uint8(packet.GetCapPower())
+
 	}
 }
 
@@ -76,26 +78,27 @@ func RobotIPList(chrobotip chan bool) {
 	<-chrobotip
 }
 
-func updateBatteryVoltage(chbattery chan bool) {
-	for {
-		for i := 0; i < 16; i++ {
-			if robot_online[i] {
-				//CURLを実行
-				resp, err := http.Get("http://" + robot_ipaddr[i] + ":9191/battery")
-				if err != nil {
-					log.Println("ERR: ", err)
-				} else {
-					byteArray, _ := io.ReadAll(resp.Body)
-					//JSONをパース
-					var dat map[string]interface{}
-					if err := json.Unmarshal(byteArray, &dat); err != nil {
-						log.Println("ERR: ", err)
-					}
-					//バッテリー電圧を取得
-					battery_voltage[i] = float32(dat["VOLT"].(float64))
-				}
-				time.Sleep(5 * time.Second)
-			}
-		}
-	}
-}
+// Piから自主的に送信するように変更したため、現在のところ不要
+// func updateBatteryVoltage(chbattery chan bool) {
+// 	for {
+// 		for i := 0; i < 16; i++ {
+// 			if robot_online[i] {
+// 				//CURLを実行
+// 				resp, err := http.Get("http://" + robot_ipaddr[i] + ":9191/battery")
+// 				if err != nil {
+// 					log.Println("ERR: ", err)
+// 				} else {
+// 					byteArray, _ := io.ReadAll(resp.Body)
+// 					//JSONをパース
+// 					var dat map[string]interface{}
+// 					if err := json.Unmarshal(byteArray, &dat); err != nil {
+// 						log.Println("ERR: ", err)
+// 					}
+// 					//バッテリー電圧を取得
+// 					battery_voltage[i] = float32(dat["VOLT"].(float64))
+// 				}
+// 				time.Sleep(5 * time.Second)
+// 			}
+// 		}
+// 	}
+// }

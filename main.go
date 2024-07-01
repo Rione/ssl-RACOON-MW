@@ -291,7 +291,6 @@ func main() {
 	chvisrobot := make(chan bool)
 	chctrlfb := make(chan bool)
 	chrobotip := make(chan bool)
-	chbattery := make(chan bool)
 
 	go Update(chupdate)
 	go RunServer(chserver, *reportrate, ourteam_n, goalpos_n, *debug, *simmode, *ignore_ref_mismatch, *match_mode, *grsim_send_port, *goal_keeper, halfswitch_n)
@@ -301,7 +300,6 @@ func main() {
 	go RefereeClient(chref)
 	go controllerFeedback(chctrlfb)
 	go RobotIPList(chrobotip)
-	go updateBatteryVoltage(chbattery)
 
 	<-chupdate
 	<-chserver
@@ -311,7 +309,6 @@ func main() {
 	<-chvisrobot
 	<-chctrlfb
 	<-chrobotip
-	<-chbattery
 
 }
 
