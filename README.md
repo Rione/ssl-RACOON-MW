@@ -13,6 +13,11 @@ This is our communication software for [RoboCup Soccer SSL](https://ssl.robocup.
 
 # Usage
 
+## Generate Go Proto files
+```bash
+protoc --proto_path=proto/pb_src --go_out=proto/pb_gen --go_opt=paths=source_relative proto/pb_src/*.proto
+```
+
 ## Run
 
 ```bash

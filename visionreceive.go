@@ -19,7 +19,8 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmode bool, replay bool, halfswitch_n int, debug_for_sono bool) {
+func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmode bool, replay bool, halfswitch_n int, debug_for_sono bool, matchmode bool) {
+
 	var pre_ball_X float32
 	var pre_ball_Y float32
 	var pre_robot_X [16]float32
@@ -61,7 +62,7 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 	modelBallX = models.NewSimpleModel(t, 0.0, models.SimpleModelConfig{
 		InitialVariance:     100,
 		ProcessVariance:     0.1,
-		ObservationVariance: 0.1,
+		ObservationVariance: 0.18,
 	})
 	filterBallX := kalman.NewKalmanFilter(modelBallX)
 	//KalmanSmoother
@@ -70,7 +71,7 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 	modelBallY = models.NewSimpleModel(t, 0.0, models.SimpleModelConfig{
 		InitialVariance:     100,
 		ProcessVariance:     0.1,
-		ObservationVariance: 0.1,
+		ObservationVariance: 0.08,
 	})
 	filterBallY := kalman.NewKalmanFilter(modelBallY)
 	// smoothedBallY := kalman.NewKalmanSmoother(modelBallX)
@@ -96,6 +97,7 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 
 	Qv = mat.NewDense(3, 3, nil)
 	Qv.Scale(0.1, Qvx)
+
 	// Qwx := mat.NewDiagDense(3, []float64{1, 1, 1})
 	kalman_data := []float64{0.185, 0.0, 0.0, 0.0, 0.084, 0, 0, 0, 8.3e-6}
 	Qw = mat.NewDense(3, 3, kalman_data)
@@ -126,7 +128,7 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 		our_xh_k_1[i] = mat.DenseCopyOf(xh0)
 		our_P_k_1[i] = mat.NewDense(3, 3, nil)
 		our_u_k_1[i] = mat.NewDense(3, 1, nil)
-
+    
 		enemy_xh_k_1[i] = mat.DenseCopyOf(enemy_xh0)
 		enemy_P_k_1[i] = mat.NewDense(6, 6, nil)
 		enemy_u_k_1[i] = mat.NewDense(3, 1, nil)
@@ -207,6 +209,12 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 			visible_in_vision_b[i] = false
 			visible_in_vision_y[i] = false
 		}
+
+		//チームカラー検査
+		if teamcolor_from_ref != -1 && matchmode {
+			ourteam = teamcolor_from_ref
+		}
+
 		for i := 0; i < maxcameras; i++ {
 			var n int
 			var err error
@@ -804,11 +812,11 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 					filtered_enemy_theta[i] = float32(xh_k.At(2, 0))
 
 					//0番目のフィルタする前と後の値を出力
-					if i == 0 {
-						fmt.Printf("X: before: %f, filtered value: %f\n", enemy.GetX(), filtered_enemy_x[i])
-						fmt.Printf("Y: before: %f, filtered value: %f\n", enemy.GetY(), filtered_enemy_y[i])
-						fmt.Printf("Theta: before: %f, filtered value: %f\n", enemy.GetOrientation(), filtered_enemy_theta[i])
-					}
+					//if i == 0 {
+					//	fmt.Printf("X: before: %f, filtered value: %f\n", enemy.GetX(), filtered_enemy_x[i])
+					//	fmt.Printf("Y: before: %f, filtered value: %f\n", enemy.GetY(), filtered_enemy_y[i])
+					//	fmt.Printf("Theta: before: %f, filtered value: %f\n", enemy.GetOrientation(), filtered_enemy_theta[i])
+					//}
 
 					enemy_difference_X[i] = filtered_enemy_x[i] - pre_enemy_X[i]
 					enemy_difference_Y[i] = filtered_enemy_y[i] - pre_enemy_Y[i]

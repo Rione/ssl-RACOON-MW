@@ -197,11 +197,12 @@ message Referee_Info {
 
     required uint32 yellow_cards = 5;
     required uint32 red_cards = 6;
-    repeated GameEvent event = 7;
-    optional Command pre_command = 8;
-    optional Command next_command = 9;
-    optional float ball_placement_x = 10;
-    optional float ball_placement_y = 11;
+    required uint32 our_goalkeeper_id = 7;
+    repeated GameEvent event = 8;
+    optional Command pre_command = 9;
+    optional Command next_command = 10;
+    optional float ball_placement_x = 11;
+    optional float ball_placement_y = 12;
 }
 
 message RobotIP_Infos {
@@ -217,6 +218,11 @@ message Other_Infos {
     required bool is_vision_recv = 5;
     required int32 attack_direction = 6;
     required bool is_ball_moving = 7;
+    required bool is_real = 8;
+    required bool is_team_yellow = 9;
+    required bool is_half_court = 10;
+    required bool is_matchmode = 11; // true: ignore mw option(simmode, halfcourt, teamcolor)
+    required uint32 grsim_command_listen_port = 12; // default 20011
 }
 
 message RacoonMW_Packet {

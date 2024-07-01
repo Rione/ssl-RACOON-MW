@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"net"
 	"sync"
 
@@ -24,7 +25,7 @@ func controllerFeedback(chctrlfb chan bool) {
 	// コントローラからの通信をUDPで待ち受ける
 	serverAddr := &net.UDPAddr{
 		IP:   net.ParseIP("127.0.0.1"),
-		Port: 50001,
+		Port: 56940,
 	}
 
 	serverConn, err := net.ListenUDP("udp", serverAddr)
@@ -47,13 +48,18 @@ func controllerFeedback(chctrlfb chan bool) {
 			controllerRobotVelocitys[i] = RobotVelocity{}
 		}
 		for _, command := range packet.Commands.RobotCommands {
-			controllerRobotVelocitys[command.GetId()] = RobotVelocity{
-				X:       command.GetVeltangent(),
-				Y:       command.GetVelnormal(),
-				Angular: command.GetVelangular(),
+			if command.GetId() > 0 || command.GetId() < 16 {
+				controllerRobotVelocitys[command.GetId()] = RobotVelocity{
+					X:       command.GetVeltangent(),
+					Y:       command.GetVelnormal(),
+					Angular: command.GetVelangular(),
+				}
+			} else {
+				log.Println("[MW-Controller-Feedback] Invalid robot id: ", command.GetId())
 			}
 		}
-
 		mutex.Unlock()
 	}
+
+	chctrlfb <- true
 }
