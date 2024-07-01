@@ -244,6 +244,7 @@ func createOtherInfo(goalpos_n int32, ourteam int, match_mode bool, grsim_send_p
 		IsReal:                 &isReal,
 		IsTeamYellow:           &isYellow,
 		IsHalfCourt:            &isHalfcourt,
+		IsMatchmode:            &match_mode,
 		GrsimCommandListenPort: &grSimSendPort,
 	}
 	return pe
