@@ -41,17 +41,22 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 	// var averagex float64 = 0
 	// var averagey float64 = 0
 
-	// var ax float64
-	// var bx float64
-	// var ay float64
-	// var by float64
-	// var at float64
-	// var bt float64
+	var ax float64
+	var bx float64
+	var ay float64
+	var by float64
+	var at float64
+	var bt float64
 	var Qv *mat.Dense
 	var Qw *mat.Dense
-	var xh_k_1 [16]*mat.Dense
-	var P_k_1 [16]*mat.Dense
-	var u_k_1 [16]*mat.Dense
+	var our_xh_k_1 [16]*mat.Dense
+	var our_P_k_1 [16]*mat.Dense
+	var our_u_k_1 [16]*mat.Dense
+
+	var enemy_Qv *mat.Dense
+	var enemy_xh_k_1 [16]*mat.Dense
+	var enemy_P_k_1 [16]*mat.Dense
+	var enemy_u_k_1 [16]*mat.Dense
 
 	modelBallX = models.NewSimpleModel(t, 0.0, models.SimpleModelConfig{
 		InitialVariance:     100,
@@ -91,24 +96,44 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 
 	Qv = mat.NewDense(3, 3, nil)
 	Qv.Scale(0.1, Qvx)
-	Qwx := mat.NewDiagDense(3, []float64{1, 1, 1})
-	Qw = mat.NewDense(3, 3, nil)
-	Qw.Scale(0.1, Qwx)
+	// Qwx := mat.NewDiagDense(3, []float64{1, 1, 1})
+	kalman_data := []float64{0.185, 0.0, 0.0, 0.0, 0.084, 0, 0, 0, 8.3e-6}
+	Qw = mat.NewDense(3, 3, kalman_data)
+	// Qw.Scale(0.1, Qwx)
 
 	// P_k := []float64{1, 0, 0, 0, 1, 0, 0, 0, 1}
 
-	for i := 0; i < 16; i++ {
-		xh_k_1[i] = mat.DenseCopyOf(xh0)
-		P_k_1[i] = mat.NewDense(3, 3, nil)
-		u_k_1[i] = mat.NewDense(3, 1, nil)
-	}
+	enemy_Ax := []float64{-ax, 0, 0, 0, -ay, 0, 0, 0, -at}
+	enemy_Bx := []float64{bx, 0, 0, 0, by, 0, 0, 0, bt}
+	enemy_Cx := []float64{1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0}
 
-	//f, _ := os.Create("./DEBUG2.txt")
+	enemy_xh0x := []float64{0.1, 0, 0, 0, 0, 0}
+	enemy_A := mat.NewDense(3, 3, enemy_Ax)
+	enemy_B := mat.NewDense(3, 3, enemy_Bx)
+	enemy_C := mat.NewDense(3, 6, enemy_Cx)
+	// x0 := mat.NewDense(6, 1, x0x)
+	enemy_xh0 := mat.NewDense(6, 1, enemy_xh0x)
+	// enemy_Qvx := mat.NewDiagDense(3, []float64{1, 1, 1})
+	enemy_Qvx := mat.NewDiagDense(6, []float64{1, 1, 1, 1, 1, 1})
+
+	enemy_Qv = mat.NewDense(6, 6, nil)
+	enemy_Qv.Scale(0.1, enemy_Qvx)
+	// enemy_Qwx := mat.NewDiagDense(3, []float64{1, 1, 1})
+	// Qw = mat.NewDense(3, 3, nil)
+	// enemy_Qw.Scale(0.1, Qwx)
+
+	for i := 0; i < 16; i++ {
+		our_xh_k_1[i] = mat.DenseCopyOf(xh0)
+		our_P_k_1[i] = mat.NewDense(3, 3, nil)
+		our_u_k_1[i] = mat.NewDense(3, 1, nil)
+
+		enemy_xh_k_1[i] = mat.DenseCopyOf(enemy_xh0)
+		enemy_P_k_1[i] = mat.NewDense(6, 6, nil)
+		enemy_u_k_1[i] = mat.NewDense(3, 1, nil)
+	}
 
 	var pre_framecounter int = 0
 	// var count int = 0
-	// var t_received float32 = 0
-	// var frameinterval float32 = 0
 
 	maxcameras = 0
 	framecounter = 0
@@ -176,6 +201,12 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 	// f, _ = os.OpenFile("./ball_cords.txt", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 
 	for {
+		var visible_in_vision_b [16]bool
+		var visible_in_vision_y [16]bool
+		for i := 0; i < 16; i++ {
+			visible_in_vision_b[i] = false
+			visible_in_vision_y[i] = false
+		}
 		for i := 0; i < maxcameras; i++ {
 			var n int
 			var err error
@@ -234,34 +265,21 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 				}
 			}
 
-			var visible_in_vision_b [16]bool
-			var visible_in_vision_y [16]bool
-			num_yellowrobots = 0
-			num_bluerobots = 0
-
-			for i := 0; i < 16; i++ {
-				visible_in_vision_b[i] = false
-				visible_in_vision_y[i] = false
-			}
-
 			// Get Blue Robots
 			for _, robot := range packet.Detection.GetRobotsBlue() {
 				switch halfswitch_n {
 				case 0:
-					num_bluerobots++
 					bluerobots[robot.GetRobotId()] = robot
 					visible_in_vision_b[robot.GetRobotId()] = true
 
 				case 1:
 					if robot.GetX() > 0 {
-						num_bluerobots++
 						bluerobots[robot.GetRobotId()] = robot
 						visible_in_vision_b[robot.GetRobotId()] = true
 					}
 
 				case -1:
 					if robot.GetX() <= 0 {
-						num_bluerobots++
 						bluerobots[robot.GetRobotId()] = robot
 						visible_in_vision_b[robot.GetRobotId()] = true
 					}
@@ -272,20 +290,17 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 			for _, robot := range packet.Detection.GetRobotsYellow() {
 				switch halfswitch_n {
 				case 0:
-					num_yellowrobots++
 					yellowrobots[robot.GetRobotId()] = robot
 					visible_in_vision_y[robot.GetRobotId()] = true
 
 				case 1:
 					if robot.GetX() > 0 {
-						num_yellowrobots++
 						yellowrobots[robot.GetRobotId()] = robot
 						visible_in_vision_y[robot.GetRobotId()] = true
 					}
 
 				case -1:
 					if robot.GetX() <= 0 {
-						num_yellowrobots++
 						yellowrobots[robot.GetRobotId()] = robot
 						visible_in_vision_y[robot.GetRobotId()] = true
 					}
@@ -371,21 +386,19 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 		}
 		framecounter++
 		// count++
-		// var detection = visiondetection[0]
 
-		// if detection != nil {
-		// 	t_received = 1.719562102517684 - 1.719562102511833
-		// 	log.Println("t_sent: ", float64(detection.GetTSent()))
-		// 	log.Println("t_capture: ", float64(detection.GetTCapture()))
-		// 	log.Println("t_received: ", t_received)
-		// 	frameinterval = t_received / float32(count)
-		// 	log.Println("frameinterval: ", frameinterval)
-		// } else {
-		// 	frameinterval = 0
+		// var detection *pb_gen.SSL_DetectionFrame
+		// var t_received float32
+		// var frameinterval float32
+
+		// t_received += float32(detection.GetTSent()) - float32(detection.GetTCapture())
+		// log.Println("t_capture: ", detection.GetTCapture())
+		// log.Println("t_sent: ", detection.GetTSent())
+		// log.Println("t_received: ", t_received)
+		// if t_received > 0 {
+		// 	frameinterval += t_received / float32(count)
+		// 	framecounter = int(1 / frameinterval)
 		// }
-
-		// //FPSの計算
-		// framecounter = int(1 / frameinterval)
 
 		// //framecounterを出力
 		// log.Println("framecounter: ", framecounter)
@@ -414,7 +427,6 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 				for i, v := range ball_x_history {
 					mm_x[i] = kalman.NewMeasurementAtTime(t, modelBallX.NewMeasurement(float64(v)))
 				}
-				smoothBallX_states, err := kalman.NewKalmanSmoother(modelBallX).Smooth(mm_x...)
 
 				//if ball_x_history is too long, remove first element
 				if len(ball_y_history) > 5 {
@@ -432,42 +444,9 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 				for i, v := range ball_y_history {
 					mm_y[i] = kalman.NewMeasurementAtTime(t, modelBallY.NewMeasurement(float64(v)))
 				}
-				// smoothBallY_states, err := kalman.NewKalmanSmoother(modelBallY).Smooth(mm_y...)
 
-				//smoothBallX_states の 4番目のsを取得する modelBallX.Value(smoothBallX_states[3].State)
-
-				if len(smoothBallX_states) >= 4 {
-					// robot_speed_fileに書き込み
-					// log.Println("smoothBallX_states", smoothBallX_states)
-					// robot_speed_file.WriteString(fmt.Sprintf("%f %f %f\n", ball.GetX(), modelBallX.Value(filterBallX.State()), modelBallX.Value(smoothBallX_states[1].State)))
-				}
-
-				// log.Println("smoothBallX_states", smoothBallX_states)
-				// log.Println("smoothBallY_states", smoothBallY_states)
-				//fmt.Printf("X: before: %f, filtered value: %f\n", ball.GetX(), modelBallX.Value(filterBallX.State()))
-				//fmt.Printf("Y: before: %f, filtered value: %f\n", ball.GetY(), modelBallY.Value(filterBallY.State()))
-				// filtered_ball_x = float32(modelBallX.Value(filterBallX.State()))
-				// filtered_ball_y = float32(modelBallY.Value(filterBallY.State()))
-
-				// log.Println("filtered_ball: ", filtered_ball_x, filtered_ball_y)
-				// fmt.Printf("X: before: %f, filtered value: %f\n", ball.GetX(), modelBallX.Value(filterBallX.State()))
-				// fmt.Printf("Y: before: %f, filtered value: %f\n", ball.GetY(), modelBallY.Value(filterBallY.State()))
-				// fmt.Printf("%f\n", modelBallX.Value(filterBallX.State()))
-				// fmt.Printf("Y: %f\n", modelBallY.Value(filterBallY.State()))
-				// sum++
-
-				// if sum < 300 {
-				// 	f.WriteString(fmt.Sprintf("%f", ball.GetX()) + "," + fmt.Sprintf("%f", math.Abs(modelBallX.Value(filterBallX.State()))) + "\n")
-				// 	sumx += math.Abs(modelBallX.Value(filterBallX.State()))
-				// 	sumy += math.Abs(modelBallY.Value(filterBallY.State()))
-				// }
-				// if sum == 300 {
-				// 	averagex = sumx / 300
-				// 	averagey = sumy / 300
-				// }
-
-				// fmt.Printf("X: %f\n", averagex)
-				// fmt.Printf("Y: %f\n", averagey)
+				filtered_ball_x = float32(modelBallX.Value(filterBallX.State()))
+				filtered_ball_y = float32(modelBallY.Value(filterBallY.State()))
 
 			}
 
@@ -560,13 +539,13 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 					// filtered_robot_y[i] = float32(modelRobotY[i].Value(filterRobotY[i].State()))
 
 					//Kalman Filter
-					x3 := xh_k_1[i].At(2, 0)
+					x3 := our_xh_k_1[i].At(2, 0)
 					// x4 := xh_k_1[i].At(3, 0)
 					// x5 := xh_k_1[i].At(4, 0)
 					// x6 := xh_k_1[i].At(5, 0)
-					u_k_1[i].Set(0, 0, float64(controllerRobotVelocitys[i].X))
-					u_k_1[i].Set(1, 0, float64(controllerRobotVelocitys[i].Y))
-					u_k_1[i].Set(2, 0, float64(controllerRobotVelocitys[i].Angular))
+					our_u_k_1[i].Set(0, 0, float64(controllerRobotVelocitys[i].X))
+					our_u_k_1[i].Set(1, 0, float64(controllerRobotVelocitys[i].Y))
+					our_u_k_1[i].Set(2, 0, float64(controllerRobotVelocitys[i].Angular))
 
 					//サンプリング周期
 					dt := 1e-2
@@ -579,7 +558,7 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 					DR := mat.NewDense(3, 3, []float64{-math.Sin(the), math.Cos(the), 0, math.Cos(the), -math.Sin((the)), 0, 0, 0, 0})
 
 					//xh_k_1の4番目~6番目を行列として取得
-					v := mat.NewDense(3, 1, []float64{u_k_1[i].At(0, 0), u_k_1[i].At(1, 0), u_k_1[i].At(2, 0)})
+					v := mat.NewDense(3, 1, []float64{our_u_k_1[i].At(0, 0), our_u_k_1[i].At(1, 0), our_u_k_1[i].At(2, 0)})
 
 					//6x6の単位行列
 					//zero1は6x3のゼロ行列
@@ -617,10 +596,10 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 					// zero3DRvdt.Augment(zero3, DRvdt)
 					F_k_1.Augment(zero3, DRvdt)
 					F_k_1.Add(Ad, F_k_1)
-					Adxh_k_1.Product(Ad, xh_k_1[i])
-					Bdu_k_1.Product(Bd, u_k_1[i])
+					Adxh_k_1.Product(Ad, our_xh_k_1[i])
+					Bdu_k_1.Product(Bd, our_u_k_1[i])
 					xhb_k.Add(Adxh_k_1, Bdu_k_1)
-					Pb_k.Product(F_k_1, P_k_1[i], F_k_1.T())
+					Pb_k.Product(F_k_1, our_P_k_1[i], F_k_1.T())
 					Pb_k.Add(Pb_k, Qv)
 
 					//フィルタリングステップ
@@ -642,7 +621,7 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 					y_kCxhb_k.Sub(y_k, y_kCxhb_k)
 					G_ky_kCxhb_k.Product(G_k, y_kCxhb_k)
 					xh_k.Add(xhb_k, G_ky_kCxhb_k)
-					xh_k_1[i] = xh_k
+					our_xh_k_1[i] = xh_k
 
 					P_k := mat.NewDense(3, 3, nil)
 					G_kC := mat.NewDense(3, 3, nil)
@@ -650,44 +629,44 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 					G_kC.Product(G_k, C)
 					IG_kC.Sub(I, G_kC)
 					P_k.Product(IG_kC, Pb_k)
-					P_k_1[i] = P_k
+					our_P_k_1[i] = P_k
 
 					filtered_robot_x[i] = float32(xh_k.At(0, 0))
 					filtered_robot_y[i] = float32(xh_k.At(1, 0))
 					filtered_robot_theta[i] = float32(xh_k.At(2, 0))
 
-					//0番目のフィルタする前と後の値を出力
-					if i == 0 {
-						fmt.Printf("X: before: %f, filtered value: %f\n", robot.GetX(), filtered_robot_x[i])
-						fmt.Printf("Y: before: %f, filtered value: %f\n", robot.GetY(), filtered_robot_y[i])
-						fmt.Printf("Theta: before: %f, filtered value: %f\n", robot.GetOrientation(), filtered_robot_theta[i])
-					}
+					// //0番目のフィルタする前と後の値を出力
+					// if i == 0 {
+					// 	fmt.Printf("X: before: %f, filtered value: %f\n", robot.GetX(), filtered_robot_x[i])
+					// 	fmt.Printf("Y: before: %f, filtered value: %f\n", robot.GetY(), filtered_robot_y[i])
+					// 	fmt.Printf("Theta: before: %f, filtered value: %f\n", robot.GetOrientation(), filtered_robot_theta[i])
+					// }
 
-					robot_difference_X[i] = robot.GetX() - pre_robot_X[i]
-					robot_difference_Y[i] = robot.GetY() - pre_robot_Y[i]
-					robot_difference_Theta[i] = robot.GetOrientation() - pre_robot_Theta[i]
+					robot_difference_X[i] = filtered_robot_x[i] - pre_robot_X[i]
+					robot_difference_Y[i] = filtered_robot_y[i] - pre_robot_Y[i]
+					robot_difference_Theta[i] = Calc_degree_normalize(filtered_robot_theta[i] - pre_robot_Theta[i])
 
 					rdX64[i] = float64(robot_difference_X[i])
 					rdY64[i] = float64(robot_difference_Y[i])
 
 					if robot_difference_Y[i] != 0 || robot_difference_X[i] != 0 {
 						robot_slope[i] = robot_difference_Y[i] / robot_difference_X[i]
-						robot_intercept[i] = robot.GetY() - (robot_slope[i] * robot.GetX())
+						robot_intercept[i] = filtered_robot_y[i] - (robot_slope[i] * filtered_robot_x[i])
 						robot_speed[i] = float32(math.Sqrt(math.Pow(rdX64[i], 2)+math.Pow(rdY64[i], 2)) / 0.016)
 					} else {
 						robot_slope[i] = 0.0
-						robot_intercept[i] = robot.GetY()
+						robot_intercept[i] = filtered_robot_y[i]
 						robot_speed[i] = 0.0
 					}
 
 					robot_angular_velocity[i] = robot_difference_Theta[i] / 0.016
 
-					pre_robot_X[i] = robot.GetX()
-					pre_robot_Y[i] = robot.GetY()
-					pre_robot_Theta[i] = robot.GetOrientation()
+					pre_robot_X[i] = filtered_robot_x[i]
+					pre_robot_Y[i] = filtered_robot_y[i]
+					pre_robot_Theta[i] = filtered_robot_theta[i]
 
-					radian_ball_robot[i] = Calc_degree_normalize(Calc_degree(ball.GetX(), ball.GetY(), robot.GetX(), robot.GetY()) - robot.GetOrientation())
-					distance_ball_robot[i] = Calc_distance(ball.GetX(), ball.GetY(), robot.GetX(), robot.GetY())
+					radian_ball_robot[i] = Calc_degree_normalize(Calc_degree(filtered_ball_x, filtered_ball_y, filtered_robot_x[i], filtered_robot_y[i]) - filtered_robot_theta[i])
+					distance_ball_robot[i] = Calc_distance(filtered_ball_x, filtered_ball_y, filtered_robot_x[i], filtered_robot_y[i])
 
 					//Print microtime and robot 0 cords to text file
 					if i == 0 && debug_for_sono {
@@ -706,33 +685,153 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 			/////////////////////////////////////
 			var edX64 [16]float64
 			var edY64 [16]float64
+			var filtered_enemy_x [16]float32
+			var filtered_enemy_y [16]float32
+			var filtered_enemy_theta [16]float32
 
 			for _, enemy := range enemyrobots {
 				if enemy != nil {
 					i := enemy.GetRobotId()
 
-					enemy_difference_X[i] = enemy.GetX() - pre_enemy_X[i]
-					enemy_difference_Y[i] = enemy.GetY() - pre_enemy_Y[i]
-					enemy_difference_Theta[i] = enemy.GetOrientation() - pre_enemy_Theta[i]
+					// //Kalman Filter
+					// err := filterRobotX[i].Update(t, modelRobotX[i].NewMeasurement(float64(robot.GetX())))
+					// if err != nil {
+					// 	log.Println(err)
+					// }
+					// err = filterRobotY[i].Update(t, modelRobotY[i].NewMeasurement(float64(robot.GetY())))
+					// if err != nil {
+					// 	log.Println(err)
+					// }
+
+					// filtered_robot_x[i] = float32(modelRobotX[i].Value(filterRobotX[i].State()))
+					// filtered_robot_y[i] = float32(modelRobotY[i].Value(filterRobotY[i].State()))
+
+					//Kalman Filter
+					x3 := enemy_xh_k_1[i].At(2, 0)
+					x4 := enemy_xh_k_1[i].At(3, 0)
+					x5 := enemy_xh_k_1[i].At(4, 0)
+					x6 := enemy_xh_k_1[i].At(5, 0)
+					// our_u_k_1[i].Set(0, 0, float64(controllerRobotVelocitys[i].X))
+					// our_u_k_1[i].Set(1, 0, float64(controllerRobotVelocitys[i].Y))
+					// our_u_k_1[i].Set(2, 0, float64(controllerRobotVelocitys[i].Angular))
+
+					//サンプリング周期
+					dt := 1e-2
+
+					//観測値のtheta
+					the := x3
+
+					//予測ステップ
+					R := mat.NewDense(3, 3, []float64{math.Cos(the), -math.Sin(math.Pi), 0, math.Sin(the), math.Cos(the), 0, 0, 0, 1})
+					DR := mat.NewDense(3, 3, []float64{-math.Sin(the), math.Cos(the), 0, math.Cos(the), -math.Sin((the)), 0, 0, 0, 0})
+
+					//xh_k_1の4番目~6番目を行列として取得
+					v := mat.NewDense(3, 1, []float64{x4, x5, x6})
+
+					//6x6の単位行列
+					//zero1は6x3のゼロ行列
+					zero1 := mat.NewDense(6, 3, []float64{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0})
+					zero2 := mat.NewDense(3, 3, []float64{0, 0, 0, 0, 0, 0, 0, 0, 0})
+					RA := mat.NewDense(6, 3, nil)
+					Ax := mat.NewDense(6, 6, nil)
+					Bx := mat.NewDense(6, 3, nil)
+					RA.Stack(R, enemy_A)
+					Ax.Augment(zero1, RA)
+					Bx.Stack(zero2, enemy_B)
+
+					//6x6の単位行列
+					I := mat.NewDense(6, 6, []float64{1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1})
+					Ad := mat.NewDense(6, 6, nil)
+					Bd := mat.NewDense(6, 3, nil)
+					Ad.Scale(dt, Ax)
+					Ad.Add(I, Ad)
+					Bd.Scale(dt, Bx)
+
+					zero3 := mat.NewDense(6, 2, nil)
+					zero4 := mat.NewDense(3, 1, nil)
+					F_k_1 := mat.NewDense(6, 6, nil)
+					DRv := mat.NewDense(3, 1, nil)
+					DRvdt := mat.NewDense(3, 1, nil)
+					DRvzero4 := mat.NewDense(6, 1, nil)
+					zero3DRvdt := mat.NewDense(6, 3, nil)
+					xhb_k := mat.NewDense(6, 1, nil)
+					Adxh_k_1 := mat.NewDense(6, 1, nil)
+					Bdu_k_1 := mat.NewDense(6, 1, nil)
+					Pb_k := mat.NewDense(6, 6, nil)
+
+					DRv.Product(DR, v)
+					DRvdt.Scale(dt, DRv)
+					DRvzero4.Stack(DRvdt, zero4)
+					zero3DRvdt.Augment(zero3, DRvzero4)
+					F_k_1.Augment(zero3DRvdt, zero1)
+					Adxh_k_1.Product(Ad, enemy_xh_k_1[i])
+					Bdu_k_1.Product(Bd, enemy_u_k_1[i]) //改良予定
+					xhb_k.Add(Adxh_k_1, Bdu_k_1)
+					Pb_k.Product(F_k_1, enemy_P_k_1[i], F_k_1.T())
+					Pb_k.Add(Pb_k, enemy_Qv)
+
+					//フィルタリングステップ
+					inv := mat.NewDense(3, 3, nil)
+					G_k := mat.NewDense(6, 3, nil)
+					xh_k := mat.NewDense(6, 1, nil)
+					y_k := mat.NewDense(3, 1, nil)
+					y_kCxhb_k := mat.NewDense(3, 1, nil)
+					G_ky_kCxhb_k := mat.NewDense(6, 1, nil)
+
+					inv.Product(enemy_C, Pb_k, enemy_C.T())
+					inv.Add(inv, Qw)
+					inv.Inverse(inv)
+					G_k.Product(Pb_k, enemy_C.T(), inv)
+					y_k.Set(0, 0, float64(enemy.GetX()))
+					y_k.Set(1, 0, float64(enemy.GetY()))
+					y_k.Set(2, 0, float64(enemy.GetOrientation()))
+					y_kCxhb_k.Product(enemy_C, xhb_k)
+					y_kCxhb_k.Sub(y_k, y_kCxhb_k)
+					G_ky_kCxhb_k.Product(G_k, y_kCxhb_k)
+					xh_k.Add(xhb_k, G_ky_kCxhb_k)
+					enemy_xh_k_1[i] = xh_k
+
+					P_k := mat.NewDense(6, 6, nil)
+					G_kC := mat.NewDense(6, 6, nil)
+					IG_kC := mat.NewDense(6, 6, nil)
+					G_kC.Product(G_k, enemy_C)
+					IG_kC.Sub(I, G_kC)
+					P_k.Product(IG_kC, Pb_k)
+					enemy_P_k_1[i] = P_k
+
+					filtered_enemy_x[i] = float32(xh_k.At(0, 0))
+					filtered_enemy_y[i] = float32(xh_k.At(1, 0))
+					filtered_enemy_theta[i] = float32(xh_k.At(2, 0))
+
+					//0番目のフィルタする前と後の値を出力
+					if i == 0 {
+						fmt.Printf("X: before: %f, filtered value: %f\n", enemy.GetX(), filtered_enemy_x[i])
+						fmt.Printf("Y: before: %f, filtered value: %f\n", enemy.GetY(), filtered_enemy_y[i])
+						fmt.Printf("Theta: before: %f, filtered value: %f\n", enemy.GetOrientation(), filtered_enemy_theta[i])
+					}
+
+					enemy_difference_X[i] = filtered_enemy_x[i] - pre_enemy_X[i]
+					enemy_difference_Y[i] = filtered_enemy_y[i] - pre_enemy_Y[i]
+					enemy_difference_Theta[i] = filtered_enemy_theta[i] - pre_enemy_Theta[i]
 
 					edX64[i] = float64(enemy_difference_X[i])
 					edY64[i] = float64(enemy_difference_Y[i])
 
 					if enemy_difference_Y[i] != 0 || enemy_difference_X[i] != 0 {
 						enemy_slope[i] = enemy_difference_Y[i] / enemy_difference_X[i]
-						enemy_intercept[i] = enemy.GetY() - (enemy_slope[i] * enemy.GetX())
+						enemy_intercept[i] = filtered_enemy_y[i] - (enemy_slope[i] * filtered_enemy_x[i])
 						enemy_speed[i] = float32(math.Sqrt(math.Pow(edX64[i], 2)+math.Pow(edY64[i], 2)) / 0.016)
 					} else {
 						enemy_slope[i] = 0.0
-						enemy_intercept[i] = enemy.GetY()
+						enemy_intercept[i] = filtered_enemy_y[i]
 						enemy_speed[i] = 0.0
 					}
 
 					enemy_angular_velocity[i] = enemy_difference_Theta[i] / 0.016
 
-					pre_enemy_X[i] = enemy.GetX()
-					pre_enemy_Y[i] = enemy.GetY()
-					pre_enemy_Theta[i] = enemy.GetOrientation()
+					pre_enemy_X[i] = filtered_enemy_x[i]
+					pre_enemy_Y[i] = filtered_enemy_y[i]
+					pre_enemy_Theta[i] = filtered_enemy_theta[i]
 				}
 			}
 			/////////////////////////////////////
