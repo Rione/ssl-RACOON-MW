@@ -209,6 +209,7 @@ func RunServer(chserver chan bool, reportrate uint, ourteam int, goalpose int, d
 }
 
 func main() {
+	//RACOON-MW Main
 
 	var (
 		visionport          = flag.Int("p", 10006, "Vision Multicast Port Number. Force 10006 when match mode is true")
