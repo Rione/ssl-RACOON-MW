@@ -32,6 +32,7 @@ func createRobotInfo(i int, ourteam int, simmode bool) *pb_gen.Robot_Infos {
 		batt = 16.5
 		online = true
 	}
+	var cap_power uint32 = uint32(cap_power[i])
 	pe := &pb_gen.Robot_Infos{
 		RobotId:           &robotid,
 		X:                 &x,
@@ -50,6 +51,7 @@ func createRobotInfo(i int, ourteam int, simmode bool) *pb_gen.Robot_Infos {
 		Online:            &online,
 		Visible:           &ourrobot_is_visible[i],
 		BatteryVoltage:    &batt,
+		CapPower:          &cap_power,
 	}
 	return pe
 }
