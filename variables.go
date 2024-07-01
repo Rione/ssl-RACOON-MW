@@ -95,6 +95,10 @@ var filtered_robot_x [16]float32
 var filtered_robot_y [16]float32
 var filtered_robot_theta [16]float32
 
+var filtered_enemy_x [16]float32
+var filtered_enemy_y [16]float32
+var filtered_enemy_theta [16]float32
+
 var ball_x_history []float32
 var ball_y_history []float32
 

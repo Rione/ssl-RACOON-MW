@@ -76,17 +76,9 @@ func createEnemyInfo(i int, ourteam int) *pb_gen.Robot_Infos {
 		var diffy float32 = enemy_difference_Y[i]
 		var difftheta float32 = enemy_difference_Theta[i]
 
-		if ourteam == 0 {
-			robotid = yellowrobots[i].GetRobotId()
-			x = yellowrobots[i].GetX()
-			y = yellowrobots[i].GetY()
-			theta = yellowrobots[i].GetOrientation()
-		} else {
-			robotid = bluerobots[i].GetRobotId()
-			x = bluerobots[i].GetX()
-			y = bluerobots[i].GetY()
-			theta = bluerobots[i].GetOrientation()
-		}
+		x = filtered_enemy_x[i]
+		y = filtered_enemy_y[i]
+		theta = filtered_enemy_theta[i]
 
 		pe := &pb_gen.Robot_Infos{
 			RobotId:         &robotid,
