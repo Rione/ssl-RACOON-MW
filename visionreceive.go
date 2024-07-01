@@ -128,7 +128,7 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 		our_xh_k_1[i] = mat.DenseCopyOf(xh0)
 		our_P_k_1[i] = mat.NewDense(3, 3, nil)
 		our_u_k_1[i] = mat.NewDense(3, 1, nil)
-    
+
 		enemy_xh_k_1[i] = mat.DenseCopyOf(enemy_xh0)
 		enemy_P_k_1[i] = mat.NewDense(6, 6, nil)
 		enemy_u_k_1[i] = mat.NewDense(3, 1, nil)
@@ -693,9 +693,6 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 			/////////////////////////////////////
 			var edX64 [16]float64
 			var edY64 [16]float64
-			var filtered_enemy_x [16]float32
-			var filtered_enemy_y [16]float32
-			var filtered_enemy_theta [16]float32
 
 			for _, enemy := range enemyrobots {
 				if enemy != nil {
@@ -811,16 +808,16 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 					filtered_enemy_y[i] = float32(xh_k.At(1, 0))
 					filtered_enemy_theta[i] = float32(xh_k.At(2, 0))
 
-					//0番目のフィルタする前と後の値を出力
-					//if i == 0 {
-					//	fmt.Printf("X: before: %f, filtered value: %f\n", enemy.GetX(), filtered_enemy_x[i])
-					//	fmt.Printf("Y: before: %f, filtered value: %f\n", enemy.GetY(), filtered_enemy_y[i])
-					//	fmt.Printf("Theta: before: %f, filtered value: %f\n", enemy.GetOrientation(), filtered_enemy_theta[i])
-					//}
+					// 0番目のフィルタする前と後の値を出力
+					if i == 0 {
+						fmt.Printf("X: before: %f, filtered value: %f\n", enemy.GetX(), filtered_enemy_x[i])
+						fmt.Printf("Y: before: %f, filtered value: %f\n", enemy.GetY(), filtered_enemy_y[i])
+						fmt.Printf("Theta: before: %f, filtered value: %f\n", enemy.GetOrientation(), filtered_enemy_theta[i])
+					}
 
 					enemy_difference_X[i] = filtered_enemy_x[i] - pre_enemy_X[i]
 					enemy_difference_Y[i] = filtered_enemy_y[i] - pre_enemy_Y[i]
-					enemy_difference_Theta[i] = filtered_enemy_theta[i] - pre_enemy_Theta[i]
+					enemy_difference_Theta[i] = Calc_degree_normalize(filtered_enemy_theta[i] - pre_enemy_Theta[i])
 
 					edX64[i] = float64(enemy_difference_X[i])
 					edY64[i] = float64(enemy_difference_Y[i])
