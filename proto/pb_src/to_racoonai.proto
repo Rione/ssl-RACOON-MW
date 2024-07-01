@@ -23,7 +23,7 @@ message Robot_Infos {
   optional bool ball_catch = 15;
   optional bool online = 16;
   optional float battery_voltage = 17;
-  optional float cap_power = 18;
+  optional uint32 cap_power = 18;
 }
 
 message Ball_Info {
