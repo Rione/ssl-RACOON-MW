@@ -8,10 +8,10 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func RefereeClient(chref chan bool) {
+func RefereeClient(chref chan bool, gcport int) {
 	serverAddr := &net.UDPAddr{
 		IP:   net.ParseIP("224.5.23.1"),
-		Port: 10003,
+		Port: gcport,
 	}
 	interfacename, _ := net.InterfaceByName(NW_VISION_REFEREE_INTERFACE_NAME)
 
