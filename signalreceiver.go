@@ -47,7 +47,7 @@ func Update(chupdate chan bool) {
 			log.Println("Robot ID", packet.GetRobotId(), " is associated with ", addr.IP.String())
 		}
 
-		battery_voltage[packet.GetRobotId()] = float32(packet.GetBatteryVoltage())
+		battery_voltage[packet.GetRobotId()] = float32(packet.GetBatteryVoltage()) / 10
 		cap_power[packet.GetRobotId()] = uint8(packet.GetCapPower())
 
 	}
