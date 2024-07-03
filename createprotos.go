@@ -70,7 +70,7 @@ func addRobotInfoToRobotInfos(robotinfo [16]*pb_gen.Robot_Infos) []*pb_gen.Robot
 
 func createEnemyInfo(i int, ourteam int) *pb_gen.Robot_Infos {
 	if enemyrobot_is_visible[i] {
-		var robotid uint32
+		var robotid uint32 = uint32(i)
 		var x float32
 		var y float32
 		var theta float32
