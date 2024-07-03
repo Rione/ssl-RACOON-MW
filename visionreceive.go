@@ -680,7 +680,6 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 					if i == 0 && debug_for_sono {
 						fmt.Fprintf(robot_cords_file, "%d, %f, %f, %f, %f, %f, %f\n", time.Now().UnixNano(), filtered_robot_x[0], filtered_robot_y[0], robot.GetOrientation(), robot.GetX(), robot.GetY(), robot.GetOrientation())
 					}
-
 				}
 				//Print robot speed to text file
 				// fmt.Fprintf(robot_speed_file, "%f\n", robot_speed[6])
@@ -809,11 +808,11 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 					filtered_enemy_theta[i] = float32(xh_k.At(2, 0))
 
 					// 0番目のフィルタする前と後の値を出力
-					if i == 0 {
-						fmt.Printf("X: before: %f, filtered value: %f\n", enemy.GetX(), filtered_enemy_x[i])
-						fmt.Printf("Y: before: %f, filtered value: %f\n", enemy.GetY(), filtered_enemy_y[i])
-						fmt.Printf("Theta: before: %f, filtered value: %f\n", enemy.GetOrientation(), filtered_enemy_theta[i])
-					}
+					// if i == 0 {
+					// 	fmt.Printf("X: before: %f, filtered value: %f\n", enemy.GetX(), filtered_enemy_x[i])
+					// 	fmt.Printf("Y: before: %f, filtered value: %f\n", enemy.GetY(), filtered_enemy_y[i])
+					// 	fmt.Printf("Theta: before: %f, filtered value: %f\n", enemy.GetOrientation(), filtered_enemy_theta[i])
+					// }
 
 					enemy_difference_X[i] = filtered_enemy_x[i] - pre_enemy_X[i]
 					enemy_difference_Y[i] = filtered_enemy_y[i] - pre_enemy_Y[i]
@@ -837,6 +836,9 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 					pre_enemy_X[i] = filtered_enemy_x[i]
 					pre_enemy_Y[i] = filtered_enemy_y[i]
 					pre_enemy_Theta[i] = filtered_enemy_theta[i]
+
+					// log.Println("robot ", i, " speed: ", robot_speed[i])
+
 				}
 			}
 			/////////////////////////////////////
