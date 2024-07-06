@@ -453,10 +453,10 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 					mm_y[i] = kalman.NewMeasurementAtTime(t, modelBallY.NewMeasurement(float64(v)))
 				}
 
-				// filtered_ball_x = float32(modelBallX.Value(filterBallX.State()))
-				// filtered_ball_y = float32(modelBallY.Value(filterBallY.State()))
-				filtered_ball_x = ball.GetX()
-				filtered_ball_y = ball.GetY()
+				filtered_ball_x = float32(modelBallX.Value(filterBallX.State()))
+				filtered_ball_y = float32(modelBallY.Value(filterBallY.State()))
+				// filtered_ball_x = ball.GetX()
+				// filtered_ball_y = ball.GetY()
 
 			}
 
