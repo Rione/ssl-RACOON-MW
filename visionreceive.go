@@ -19,7 +19,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmode bool, replay bool, halfswitch_n int, debug_for_sono bool, matchmode bool) {
+func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmode bool, replay bool, halfswitch_n int, debug_for_sono bool, matchmode bool, initial_variance float64, process_variance float64, observation_variance float64) {
 
 	var pre_ball_X float32
 	var pre_ball_Y float32
@@ -60,18 +60,18 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 	var enemy_u_k_1 [16]*mat.Dense
 
 	modelBallX = models.NewSimpleModel(t, 0.0, models.SimpleModelConfig{
-		InitialVariance:     100,
-		ProcessVariance:     0.1,
-		ObservationVariance: 0.18,
+		InitialVariance:     initial_variance,
+		ProcessVariance:     process_variance,
+		ObservationVariance: observation_variance,
 	})
 	filterBallX := kalman.NewKalmanFilter(modelBallX)
 	//KalmanSmoother
 	// smoothedBallX := kalman.NewKalmanSmoother(modelBallX)
 
 	modelBallY = models.NewSimpleModel(t, 0.0, models.SimpleModelConfig{
-		InitialVariance:     100,
-		ProcessVariance:     0.1,
-		ObservationVariance: 0.08,
+		InitialVariance:     initial_variance,
+		ProcessVariance:     process_variance,
+		ObservationVariance: observation_variance,
 	})
 	filterBallY := kalman.NewKalmanFilter(modelBallY)
 	// smoothedBallY := kalman.NewKalmanSmoother(modelBallX)
