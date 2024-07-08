@@ -13,8 +13,8 @@ import (
 	"time"
 
 	"github.com/Rione-SSL/RACOON-MW/proto/pb_gen"
-	"github.com/rosshemsley/kalman"
-	"github.com/rosshemsley/kalman/models"
+	// "github.com/rosshemsley/kalman"
+	// "github.com/rosshemsley/kalman/models"
 	"gonum.org/v1/gonum/mat"
 	"google.golang.org/protobuf/proto"
 )
@@ -31,10 +31,10 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 	var pre_enemy_Y [16]float32
 	var pre_enemy_Theta [16]float32
 
-	var t time.Time
+	// var t time.Time
 
-	var modelBallX *models.SimpleModel
-	var modelBallY *models.SimpleModel
+	// var modelBallX *models.SimpleModel
+	// var modelBallY *models.SimpleModel
 
 	// var sum float64 = 0
 	// var sumx float64 = 0
@@ -59,21 +59,44 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 	var enemy_P_k_1 [16]*mat.Dense
 	var enemy_u_k_1 [16]*mat.Dense
 
-	modelBallX = models.NewSimpleModel(t, 0.0, models.SimpleModelConfig{
-		InitialVariance:     initial_variance,
-		ProcessVariance:     process_variance,
-		ObservationVariance: observation_variance,
-	})
-	filterBallX := kalman.NewKalmanFilter(modelBallX)
-	//KalmanSmoother
-	// smoothedBallX := kalman.NewKalmanSmoother(modelBallX)
+	var m float64 = 0.046 //[kg] ボールの質量
+	// var mu float64 = 0.05 //[N・s/m] ボールの粘性摩擦抵抗
+	var Ts float64 = 0.02 //[s] サンプリング周期
+	var K float64 = 20.0
+	var Ad_lowpass float64 = 0.818731
+	var Bd_lowpass float64 = 0.181269
+	var DeltaPmax float64 = 0.240000
+	var ObPosX_k_1 float64 = 0.0
+	var ObPosY_k_1 float64 = 0.0
+	var ObPosX_lowpass float64 = 0.0
+	var ObPosY_lowpass float64 = 0.0
+	var ObPosX_lowpass_k_1 float64 = 0.0
+	var ObPosY_lowpass_k_1 float64 = 0.0
+	var ObVelX float64 = 0.0
+	var ObVelY float64 = 0.0
+	var ObVelX_k_1 float64 = 0.0
+	var ObVelY_k_1 float64 = 0.0
+	var tempX_1 float64 = 0.0
+	var tempY_1 float64 = 0.0
+	var tempX_2 float64 = 0.0
+	var tempY_2 float64 = 0.0
+	var is_ball_exists bool = false
 
-	modelBallY = models.NewSimpleModel(t, 0.0, models.SimpleModelConfig{
-		InitialVariance:     initial_variance,
-		ProcessVariance:     process_variance,
-		ObservationVariance: observation_variance,
-	})
-	filterBallY := kalman.NewKalmanFilter(modelBallY)
+	// modelBallX = models.NewSimpleModel(t, 0.0, models.SimpleModelConfig{
+	// 	InitialVariance:     initial_variance,
+	// 	ProcessVariance:     process_variance,
+	// 	ObservationVariance: observation_variance,
+	// })
+	// filterBallX := kalman.NewKalmanFilter(modelBallX)
+	// //KalmanSmoother
+	// // smoothedBallX := kalman.NewKalmanSmoother(modelBallX)
+
+	// modelBallY = models.NewSimpleModel(t, 0.0, models.SimpleModelConfig{
+	// 	InitialVariance:     initial_variance,
+	// 	ProcessVariance:     process_variance,
+	// 	ObservationVariance: observation_variance,
+	// })
+	// filterBallY := kalman.NewKalmanFilter(modelBallY)
 	// smoothedBallY := kalman.NewKalmanSmoother(modelBallX)
 
 	// var modelRobotX [16]*models.SimpleModel
@@ -361,7 +384,7 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 				PixelX:     proto.Float32(0.0),
 				PixelY:     proto.Float32(0.0),
 			}
-			var is_ball_exists bool = false
+			// is_ball_exists = true
 			if packet.Detection.GetBalls() != nil {
 				var usethisball bool
 				for _, fball := range packet.Detection.GetBalls() {
@@ -420,43 +443,98 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 			/////////////////////////////////////
 			if ball != nil {
 				//if ball_x_history is too long, remove first element
-				if len(ball_x_history) > 5 {
-					ball_x_history = ball_x_history[1:]
-				}
-				//append ball x history
-				ball_x_history = append(ball_x_history, ball.GetX())
+				// if len(ball_x_history) > 5 {
+				// 	ball_x_history = ball_x_history[1:]
+				// }
+				// //append ball x history
+				// ball_x_history = append(ball_x_history, ball.GetX())
 
-				t = t.Add(time.Duration(secperframe * 1000 * float32(time.Millisecond)))
-				err := filterBallX.Update(t, modelBallX.NewMeasurement(float64(ball.GetX())))
-				if err != nil {
-					log.Println(err)
-				}
-				mm_x := make([]*kalman.MeasurementAtTime, len(ball_x_history))
-				for i, v := range ball_x_history {
-					mm_x[i] = kalman.NewMeasurementAtTime(t, modelBallX.NewMeasurement(float64(v)))
-				}
+				// t = t.Add(time.Duration(secperframe * 1000 * float32(time.Millisecond)))
+				// err := filterBallX.Update(t, modelBallX.NewMeasurement(float64(ball.GetX())))
+				// if err != nil {
+				// 	log.Println(err)
+				// }
+				// mm_x := make([]*kalman.MeasurementAtTime, len(ball_x_history))
+				// for i, v := range ball_x_history {
+				// 	mm_x[i] = kalman.NewMeasurementAtTime(t, modelBallX.NewMeasurement(float64(v)))
+				// }
 
-				//if ball_x_history is too long, remove first element
-				if len(ball_y_history) > 5 {
-					ball_y_history = ball_y_history[1:]
-				}
-				//append ball x history
-				ball_y_history = append(ball_y_history, ball.GetY())
+				// //if ball_x_history is too long, remove first element
+				// if len(ball_y_history) > 5 {
+				// 	ball_y_history = ball_y_history[1:]
+				// }
+				// //append ball x history
+				// ball_y_history = append(ball_y_history, ball.GetY())
 
-				err = filterBallY.Update(t, modelBallY.NewMeasurement(float64(ball.GetY())))
-				if err != nil {
-					log.Println(err)
-				}
+				// err = filterBallY.Update(t, modelBallY.NewMeasurement(float64(ball.GetY())))
+				// if err != nil {
+				// 	log.Println(err)
+				// }
 
-				mm_y := make([]*kalman.MeasurementAtTime, len(ball_x_history))
-				for i, v := range ball_y_history {
-					mm_y[i] = kalman.NewMeasurementAtTime(t, modelBallY.NewMeasurement(float64(v)))
-				}
+				// mm_y := make([]*kalman.MeasurementAtTime, len(ball_x_history))
+				// for i, v := range ball_y_history {
+				// 	mm_y[i] = kalman.NewMeasurementAtTime(t, modelBallY.NewMeasurement(float64(v)))
+				// }
 
-				filtered_ball_x = float32(modelBallX.Value(filterBallX.State()))
-				filtered_ball_y = float32(modelBallY.Value(filterBallY.State()))
+				// filtered_ball_x = float32(modelBallX.Value(filterBallX.State()))
+				// filtered_ball_y = float32(modelBallY.Value(filterBallY.State()))
 				// filtered_ball_x = ball.GetX()
 				// filtered_ball_y = ball.GetY()
+
+				TempX := ObPosX_k_1
+				TempY := ObPosY_k_1
+
+				for i := 0; i < 10; i++ {
+					DeltaX := ball.GetX() - float32(ObPosX_lowpass_k_1)
+					DeltaY := ball.GetY() - float32(ObPosY_lowpass_k_1)
+					// fmt.Printf("DeltaX: %f, DeltaY: %f\n", DeltaX, DeltaY)
+					if math.Abs(float64(DeltaX)) > DeltaPmax {
+						tempX_2 = 0.0
+						// fmt.Println("OK!X")
+					} else {
+						tempX_2 = float64(ball.GetX()) - TempX
+						fmt.Printf("tempX_2: %f\n", tempX_2)
+					}
+
+					if math.Abs(float64(DeltaY)) > DeltaPmax {
+						tempY_2 = 0.0
+						// fmt.Println("OK!Y")
+					} else {
+						tempY_2 = float64(ball.GetY()) - TempY
+						// fmt.Printf("tempY_2: %f\n", tempY_2)
+					}
+
+					if is_ball_exists {
+						tempX_1 = tempX_2
+						tempY_1 = tempY_2
+						// fmt.Printf("tempX_1: %f, tempY_1: %f\n", tempX_1, tempY_1)
+					} else {
+						tempX_1 = 0.0
+						tempY_1 = 0.0
+					}
+
+					accX := (K / m) * tempX_1
+					accY := (K / m) * tempY_1
+					ObVelX = ObVelX_k_1 + Ts*accX
+					ObVelY = ObVelY_k_1 + Ts*accY
+					TempX = ObPosX_k_1 + Ts*ObVelX
+					TempY = ObPosY_k_1 + Ts*ObVelY
+					// fmt.Printf("TempX: %f, TempY: %f\n", TempX, TempY)
+					ObPosX_lowpass = Bd_lowpass*TempX + Ad_lowpass*ObPosX_lowpass_k_1
+					ObPosY_lowpass = Bd_lowpass*TempY + Ad_lowpass*ObPosY_lowpass_k_1
+
+					ObPosX_k_1 = TempX
+					ObPosY_k_1 = TempY
+					ObVelX_k_1 = ObVelX
+					ObVelY_k_1 = ObVelY
+					ObPosX_lowpass_k_1 = ObPosX_lowpass
+					ObPosY_lowpass_k_1 = ObPosY_lowpass
+				}
+				filtered_ball_x = float32(TempX)
+				filtered_ball_y = float32(TempY)
+
+				//フィルタをかける前とかけた後の値を出力
+				fmt.Printf("ball_x: %f, ball_y: %f, filtered_ball_x: %f, filtered_ball_y: %f\n", ball.GetX(), ball.GetY(), filtered_ball_x, filtered_ball_y)
 
 			}
 
