@@ -82,7 +82,6 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 	var tempY_2 float64 = 0.0
 	var ObPosX float64 = 0.0
 	var ObPosY float64 = 0.0
-	var is_ball_exists bool = false
 
 	// modelBallX = models.NewSimpleModel(t, 0.0, models.SimpleModelConfig{
 	// 	InitialVariance:     initial_variance,
@@ -240,6 +239,9 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 			ourteam = teamcolor_from_ref
 		}
 
+		var is_ball_exists bool = false
+		var flag_ball bool = false
+		// var get_ball bool = false
 		for i := 0; i < maxcameras; i++ {
 			var n int
 			var err error
@@ -387,6 +389,13 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 				PixelY:     proto.Float32(0.0),
 			}
 			// is_ball_exists = true
+
+			//コートのwidthとheightを取得
+			fmt.Println("Field Width: ", packet.Geometry)
+			// fmt.Println("Field Height: ", packet.Geometry.GetField()
+
+			fmt.Println("packet.Detection.GetBalls: ", packet.Detection.GetBalls())
+
 			if packet.Detection.GetBalls() != nil {
 				var usethisball bool
 				for _, fball := range packet.Detection.GetBalls() {
@@ -408,6 +417,7 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 							maxconfball = fball
 						}
 						is_ball_exists = true
+						flag_ball = true
 					}
 				}
 
@@ -517,8 +527,8 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 					} else {
 						tempY_2 = float64(ballPosYInMeter) - TempY
 					}
-
-					if is_ball_exists {
+					fmt.Println(("flag_ball: "), flag_ball)
+					if flag_ball {
 						tempX_1 = tempX_2
 						tempY_1 = tempY_2
 					} else {
