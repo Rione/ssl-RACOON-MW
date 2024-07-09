@@ -59,8 +59,8 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 	var enemy_P_k_1 [16]*mat.Dense
 	var enemy_u_k_1 [16]*mat.Dense
 
-	var m float64 = 0.046 //[kg] ボールの質量
-	// var mu float64 = 0.05 //[N・s/m] ボールの粘性摩擦抵抗
+	var m float64 = 0.046  //[kg] ボールの質量
+	var mu float64 = 0.05  //[N・s/m] ボールの粘性摩擦抵抗
 	var Ts float64 = 0.016 //[s] サンプリング周期
 	var K float64 = 20.0
 	var Ad_lowpass float64 = 0.818731
@@ -390,12 +390,6 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 			}
 			// is_ball_exists = true
 
-			//コートのwidthとheightを取得
-			fmt.Println("Field Width: ", packet.Geometry)
-			// fmt.Println("Field Height: ", packet.Geometry.GetField()
-
-			fmt.Println("packet.Detection.GetBalls: ", packet.Detection.GetBalls())
-
 			if packet.Detection.GetBalls() != nil {
 				var usethisball bool
 				for _, fball := range packet.Detection.GetBalls() {
@@ -424,6 +418,11 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 				if is_ball_exists {
 					ball = maxconfball
 				}
+
+				if !flag_ball {
+					flag_ball = true
+				}
+
 			}
 
 		}
@@ -454,51 +453,12 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 			//
 			/////////////////////////////////////
 			if ball != nil {
-				//if ball_x_history is too long, remove first element
-				// if len(ball_x_history) > 5 {
-				// 	ball_x_history = ball_x_history[1:]
-				// }
-				// //append ball x history
-				// ball_x_history = append(ball_x_history, ball.GetX())
-
-				// t = t.Add(time.Duration(secperframe * 1000 * float32(time.Millisecond)))
-				// err := filterBallX.Update(t, modelBallX.NewMeasurement(float64(ball.GetX())))
-				// if err != nil {
-				// 	log.Println(err)
-				// }
-				// mm_x := make([]*kalman.MeasurementAtTime, len(ball_x_history))
-				// for i, v := range ball_x_history {
-				// 	mm_x[i] = kalman.NewMeasurementAtTime(t, modelBallX.NewMeasurement(float64(v)))
-				// }
-
-				// //if ball_x_history is too long, remove first element
-				// if len(ball_y_history) > 5 {
-				// 	ball_y_history = ball_y_history[1:]
-				// }
-				// //append ball x history
-				// ball_y_history = append(ball_y_history, ball.GetY())
-
-				// err = filterBallY.Update(t, modelBallY.NewMeasurement(float64(ball.GetY())))
-				// if err != nil {
-				// 	log.Println(err)
-				// }
-
-				// mm_y := make([]*kalman.MeasurementAtTime, len(ball_x_history))
-				// for i, v := range ball_y_history {
-				// 	mm_y[i] = kalman.NewMeasurementAtTime(t, modelBallY.NewMeasurement(float64(v)))
-				// }
-
-				// filtered_ball_x = float32(modelBallX.Value(filterBallX.State()))
-				// filtered_ball_y = float32(modelBallY.Value(filterBallY.State()))
-				// filtered_ball_x = ball.GetX()
-				// filtered_ball_y = ball.GetY()
 
 				if framecounter == 1 {
 					ObPosX_k_1 = float64(ball.GetX() / 1000)
 					ObPosY_k_1 = float64(ball.GetY() / 1000)
 					ObPosX_lowpass_k_1 = float64(ball.GetX() / 1000)
 					ObPosY_lowpass_k_1 = float64(ball.GetY() / 1000)
-					log.Println("framecounter: ", framecounter)
 				}
 
 				TempX := ObPosX_k_1
@@ -511,23 +471,20 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 				ballPosXInMeter := float32(ball.GetX() / 1000)
 				ballPosYInMeter := float32(ball.GetY() / 1000)
 
-				for i := 0; i < 2; i++ {
+				for i := 0; i < 3; i++ {
 					DeltaX := ballPosXInMeter - float32(ObPosX_lowpass_k_1)
 					DeltaY := ballPosYInMeter - float32(ObPosY_lowpass_k_1)
-					if math.Abs(float64(DeltaX/1000)) > DeltaPmax {
+					if math.Abs(float64(DeltaX)) > DeltaPmax*1000 {
 						tempX_2 = 0.0
-						log.Println("DeltaX: ", DeltaX)
 					} else {
 						tempX_2 = float64(ballPosXInMeter) - TempX
 					}
 
-					if math.Abs(float64(DeltaY/1000)) > DeltaPmax {
+					if math.Abs(float64(DeltaY)) > DeltaPmax*1000 {
 						tempY_2 = 0.0
-						log.Println("DeltaY: ", DeltaY)
 					} else {
 						tempY_2 = float64(ballPosYInMeter) - TempY
 					}
-					fmt.Println(("flag_ball: "), flag_ball)
 					if flag_ball {
 						tempX_1 = tempX_2
 						tempY_1 = tempY_2
@@ -538,6 +495,7 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 
 					accX := (K / m) * tempX_1
 					accY := (K / m) * tempY_1
+					// log.Println("accX: ", accX, "accY: ", accY)
 					TempVelX = ObVelX_k_1 + Ts*accX
 					TempVelY = ObVelY_k_1 + Ts*accY
 					TempX = ObPosX_k_1 + Ts*TempVelX
@@ -550,6 +508,8 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 				ObPosY = TempY
 				ObVelX = TempVelX
 				ObVelY = TempVelY
+				ObVelX = ObVelX * math.Exp(-mu*(m*10))
+				ObVelY = ObVelY * math.Exp(-mu*(m*10))
 				ObPosX_lowpass = Temp_lowpassX
 				ObPosY_lowpass = Temp_lowpassY
 
@@ -559,12 +519,8 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 				ObVelY_k_1 = ObVelY
 				ObPosX_lowpass_k_1 = ObPosX_lowpass
 				ObPosY_lowpass_k_1 = ObPosY_lowpass
-				filtered_ball_x = float32(TempX)
-				filtered_ball_y = float32(TempY)
-
-				//フィルタをかける前とかけた後の値を出力
-				fmt.Printf("ball_x: %f, ball_y: %f, filtered_ball_x: %f, filtered_ball_y: %f\n", ball.GetX(), ball.GetY(), ObPosX_lowpass, ObPosY_lowpass)
-				fmt.Printf("ObPosX: %f, ObPosY: %f\n", ObPosX, ObPosY)
+				filtered_ball_x = float32(ObPosX * 1000)
+				filtered_ball_y = float32(ObPosY * 1000)
 
 			}
 
@@ -586,7 +542,7 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 					bdY64 := float64(ball_difference_Y)
 					ball_slope_degree = float32(math.Atan2(bdY64, bdX64))
 					ball_intercept = ball_Y - (ball_slope * ball_X)
-					ball_speed = float32(math.Sqrt(math.Pow(bdX64, 2)+math.Pow(bdY64, 2)) / 0.016)
+					ball_speed = float32(math.Sqrt(math.Pow(bdX64, 2)+math.Pow(bdY64, 2)) / float64(secperframe))
 				} else {
 					ball_slope_degree = 0.0
 					ball_intercept = 0.0
