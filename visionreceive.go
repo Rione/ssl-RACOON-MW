@@ -61,11 +61,11 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 
 	var m float64 = 0.046 //[kg] ボールの質量
 	// var mu float64 = 0.05 //[N・s/m] ボールの粘性摩擦抵抗
-	var Ts float64 = 0.02 //[s] サンプリング周期
+	var Ts float64 = 0.016 //[s] サンプリング周期
 	var K float64 = 20.0
 	var Ad_lowpass float64 = 0.818731
 	var Bd_lowpass float64 = 0.181269
-	var DeltaPmax float64 = 0.240000
+	var DeltaPmax float64 = 6 * Ts * 2
 	var ObPosX_k_1 float64 = 0.0
 	var ObPosY_k_1 float64 = 0.0
 	var ObPosX_lowpass float64 = 0.0
@@ -80,6 +80,8 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 	var tempY_1 float64 = 0.0
 	var tempX_2 float64 = 0.0
 	var tempY_2 float64 = 0.0
+	var ObPosX float64 = 0.0
+	var ObPosY float64 = 0.0
 	var is_ball_exists bool = false
 
 	// modelBallX = models.NewSimpleModel(t, 0.0, models.SimpleModelConfig{
@@ -481,33 +483,44 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 				// filtered_ball_x = ball.GetX()
 				// filtered_ball_y = ball.GetY()
 
+				if framecounter == 1 {
+					ObPosX_k_1 = float64(ball.GetX() / 1000)
+					ObPosY_k_1 = float64(ball.GetY() / 1000)
+					ObPosX_lowpass_k_1 = float64(ball.GetX() / 1000)
+					ObPosY_lowpass_k_1 = float64(ball.GetY() / 1000)
+					log.Println("framecounter: ", framecounter)
+				}
+
 				TempX := ObPosX_k_1
 				TempY := ObPosY_k_1
+				Temp_lowpassX := 0.0
+				Temp_lowpassY := 0.0
+				TempVelX := 0.0
+				TempVelY := 0.0
 
-				for i := 0; i < 10; i++ {
-					DeltaX := ball.GetX() - float32(ObPosX_lowpass_k_1)
-					DeltaY := ball.GetY() - float32(ObPosY_lowpass_k_1)
-					// fmt.Printf("DeltaX: %f, DeltaY: %f\n", DeltaX, DeltaY)
-					if math.Abs(float64(DeltaX)) > DeltaPmax {
+				ballPosXInMeter := float32(ball.GetX() / 1000)
+				ballPosYInMeter := float32(ball.GetY() / 1000)
+
+				for i := 0; i < 2; i++ {
+					DeltaX := ballPosXInMeter - float32(ObPosX_lowpass_k_1)
+					DeltaY := ballPosYInMeter - float32(ObPosY_lowpass_k_1)
+					if math.Abs(float64(DeltaX/1000)) > DeltaPmax {
 						tempX_2 = 0.0
-						// fmt.Println("OK!X")
+						log.Println("DeltaX: ", DeltaX)
 					} else {
-						tempX_2 = float64(ball.GetX()) - TempX
-						fmt.Printf("tempX_2: %f\n", tempX_2)
+						tempX_2 = float64(ballPosXInMeter) - TempX
 					}
 
-					if math.Abs(float64(DeltaY)) > DeltaPmax {
+					if math.Abs(float64(DeltaY/1000)) > DeltaPmax {
 						tempY_2 = 0.0
-						// fmt.Println("OK!Y")
+						log.Println("DeltaY: ", DeltaY)
 					} else {
-						tempY_2 = float64(ball.GetY()) - TempY
-						// fmt.Printf("tempY_2: %f\n", tempY_2)
+						tempY_2 = float64(ballPosYInMeter) - TempY
 					}
 
 					if is_ball_exists {
 						tempX_1 = tempX_2
 						tempY_1 = tempY_2
-						// fmt.Printf("tempX_1: %f, tempY_1: %f\n", tempX_1, tempY_1)
 					} else {
 						tempX_1 = 0.0
 						tempY_1 = 0.0
@@ -515,26 +528,33 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 
 					accX := (K / m) * tempX_1
 					accY := (K / m) * tempY_1
-					ObVelX = ObVelX_k_1 + Ts*accX
-					ObVelY = ObVelY_k_1 + Ts*accY
-					TempX = ObPosX_k_1 + Ts*ObVelX
-					TempY = ObPosY_k_1 + Ts*ObVelY
+					TempVelX = ObVelX_k_1 + Ts*accX
+					TempVelY = ObVelY_k_1 + Ts*accY
+					TempX = ObPosX_k_1 + Ts*TempVelX
+					TempY = ObPosY_k_1 + Ts*TempVelY
 					// fmt.Printf("TempX: %f, TempY: %f\n", TempX, TempY)
-					ObPosX_lowpass = Bd_lowpass*TempX + Ad_lowpass*ObPosX_lowpass_k_1
-					ObPosY_lowpass = Bd_lowpass*TempY + Ad_lowpass*ObPosY_lowpass_k_1
-
-					ObPosX_k_1 = TempX
-					ObPosY_k_1 = TempY
-					ObVelX_k_1 = ObVelX
-					ObVelY_k_1 = ObVelY
-					ObPosX_lowpass_k_1 = ObPosX_lowpass
-					ObPosY_lowpass_k_1 = ObPosY_lowpass
+					Temp_lowpassX = Bd_lowpass*TempX + Ad_lowpass*ObPosX_lowpass_k_1
+					Temp_lowpassY = Bd_lowpass*TempY + Ad_lowpass*ObPosY_lowpass_k_1
 				}
+				ObPosX = TempX
+				ObPosY = TempY
+				ObVelX = TempVelX
+				ObVelY = TempVelY
+				ObPosX_lowpass = Temp_lowpassX
+				ObPosY_lowpass = Temp_lowpassY
+
+				ObPosX_k_1 = TempX
+				ObPosY_k_1 = TempY
+				ObVelX_k_1 = ObVelX
+				ObVelY_k_1 = ObVelY
+				ObPosX_lowpass_k_1 = ObPosX_lowpass
+				ObPosY_lowpass_k_1 = ObPosY_lowpass
 				filtered_ball_x = float32(TempX)
 				filtered_ball_y = float32(TempY)
 
 				//フィルタをかける前とかけた後の値を出力
-				fmt.Printf("ball_x: %f, ball_y: %f, filtered_ball_x: %f, filtered_ball_y: %f\n", ball.GetX(), ball.GetY(), filtered_ball_x, filtered_ball_y)
+				fmt.Printf("ball_x: %f, ball_y: %f, filtered_ball_x: %f, filtered_ball_y: %f\n", ball.GetX(), ball.GetY(), ObPosX_lowpass, ObPosY_lowpass)
+				fmt.Printf("ObPosX: %f, ObPosY: %f\n", ObPosX, ObPosY)
 
 			}
 
