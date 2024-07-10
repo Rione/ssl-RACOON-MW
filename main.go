@@ -223,7 +223,6 @@ func main() {
 		ballmovethreshold    = flag.Float64("b", 1000, "Ball Detect Threshold (Default 1000")
 		nw_robot             = flag.String("rif", "none", "NW Robot Update Interface Name (ex. en0)")
 		nw_vision            = flag.String("vif", "none", "NW Vision and Referee receive Interface Name (ex. en1)")
-		debug_for_sono       = flag.Bool("df", false, "Print ID0 Robot Cordination for Sono")
 		ignore_ref_mismatch  = flag.Bool("igref", false, "Ignore Referee Team Color & Attack Direction Mismatch Errors. Disable when match mode is true")
 		match_mode           = flag.Bool("m", false, "Match Mode (Disable Some Options! Most option get from GC)")
 		grsim_send_port      = flag.Int("grsimport", 20011, "grSim Command Listen Port Number")
@@ -299,7 +298,7 @@ func main() {
 
 	go Update(chupdate)
 	go RunServer(chserver, *reportrate, ourteam_n, goalpos_n, *debug, *simmode, *ignore_ref_mismatch, *match_mode, *grsim_send_port, *goal_keeper, halfswitch_n)
-	go VisionReceive(chvision, *visionport, ourteam_n, goalpos_n, *simmode, *replay, halfswitch_n, *debug_for_sono, *match_mode, *initial_variance, *process_variance, *observation_variance)
+	go VisionReceive(chvision, *visionport, ourteam_n, goalpos_n, *simmode, *replay, halfswitch_n, *match_mode, *initial_variance, *process_variance, *observation_variance)
 	go CheckVisionRobot(chvisrobot)
 	go FPSCounter(chfps, ourteam_n)
 	go RefereeClient(chref, *gcport)
