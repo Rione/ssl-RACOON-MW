@@ -19,7 +19,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmode bool, replay bool, halfswitch_n int, debug_for_sono bool, matchmode bool, initial_variance float64, process_variance float64, observation_variance float64) {
+func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmode bool, replay bool, halfswitch_n int, matchmode bool, initial_variance float64, process_variance float64, observation_variance float64) {
 
 	var pre_ball_X float32
 	var pre_ball_Y float32
@@ -188,13 +188,6 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 
 	// open robot_speed_file
 	robot_cords_file := new(os.File)
-	if debug_for_sono {
-		err := error(nil)
-		robot_cords_file, err = os.OpenFile("./debug_for_sono.txt", os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
-		if err != nil {
-			log.Fatal(err)
-		}
-	}
 
 	for i := 0; i < 60; i++ {
 
@@ -599,19 +592,6 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 				if robot != nil {
 					i := robot.GetRobotId()
 
-					// //Kalman Filter
-					// err := filterRobotX[i].Update(t, modelRobotX[i].NewMeasurement(float64(robot.GetX())))
-					// if err != nil {
-					// 	log.Println(err)
-					// }
-					// err = filterRobotY[i].Update(t, modelRobotY[i].NewMeasurement(float64(robot.GetY())))
-					// if err != nil {
-					// 	log.Println(err)
-					// }
-
-					// filtered_robot_x[i] = float32(modelRobotX[i].Value(filterRobotX[i].State()))
-					// filtered_robot_y[i] = float32(modelRobotY[i].Value(filterRobotY[i].State()))
-
 					//Kalman Filter
 					x3 := our_xh_k_1[i].At(2, 0)
 					// x4 := xh_k_1[i].At(3, 0)
@@ -634,10 +614,6 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 					//xh_k_1の4番目~6番目を行列として取得
 					v := mat.NewDense(3, 1, []float64{our_u_k_1[i].At(0, 0), our_u_k_1[i].At(1, 0), our_u_k_1[i].At(2, 0)})
 
-					//6x6の単位行列
-					//zero1は6x3のゼロ行列
-					// zero1 := mat.NewDense(6, 3, []float64{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0})
-					// zero2 := mat.NewDense(3, 3, []float64{0, 0, 0, 0, 0, 0, 0, 0, 0})
 					// RA := mat.NewDense(6, 3, nil)
 					At := mat.NewDense(3, 3, nil)
 					// Bx := mat.NewDense(6, 3, nil)
@@ -709,13 +685,6 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 					filtered_robot_y[i] = float32(xh_k.At(1, 0))
 					filtered_robot_theta[i] = float32(xh_k.At(2, 0))
 
-					// //0番目のフィルタする前と後の値を出力
-					// if i == 0 {
-					// 	fmt.Printf("X: before: %f, filtered value: %f\n", robot.GetX(), filtered_robot_x[i])
-					// 	fmt.Printf("Y: before: %f, filtered value: %f\n", robot.GetY(), filtered_robot_y[i])
-					// 	fmt.Printf("Theta: before: %f, filtered value: %f\n", robot.GetOrientation(), filtered_robot_theta[i])
-					// }
-
 					robot_difference_X[i] = filtered_robot_x[i] - pre_robot_X[i]
 					robot_difference_Y[i] = filtered_robot_y[i] - pre_robot_Y[i]
 					robot_difference_Theta[i] = Calc_degree_normalize(filtered_robot_theta[i] - pre_robot_Theta[i])
@@ -742,13 +711,7 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 					radian_ball_robot[i] = Calc_degree_normalize(Calc_degree(filtered_ball_x, filtered_ball_y, filtered_robot_x[i], filtered_robot_y[i]) - filtered_robot_theta[i])
 					distance_ball_robot[i] = Calc_distance(filtered_ball_x, filtered_ball_y, filtered_robot_x[i], filtered_robot_y[i])
 
-					//Print microtime and robot 0 cords to text file
-					if i == 0 && debug_for_sono {
-						fmt.Fprintf(robot_cords_file, "%d, %f, %f, %f, %f, %f, %f\n", time.Now().UnixNano(), filtered_robot_x[0], filtered_robot_y[0], robot.GetOrientation(), robot.GetX(), robot.GetY(), robot.GetOrientation())
-					}
 				}
-				//Print robot speed to text file
-				// fmt.Fprintf(robot_speed_file, "%f\n", robot_speed[6])
 			}
 
 			/////////////////////////////////////
@@ -763,27 +726,11 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 				if enemy != nil {
 					i := enemy.GetRobotId()
 
-					// //Kalman Filter
-					// err := filterRobotX[i].Update(t, modelRobotX[i].NewMeasurement(float64(robot.GetX())))
-					// if err != nil {
-					// 	log.Println(err)
-					// }
-					// err = filterRobotY[i].Update(t, modelRobotY[i].NewMeasurement(float64(robot.GetY())))
-					// if err != nil {
-					// 	log.Println(err)
-					// }
-
-					// filtered_robot_x[i] = float32(modelRobotX[i].Value(filterRobotX[i].State()))
-					// filtered_robot_y[i] = float32(modelRobotY[i].Value(filterRobotY[i].State()))
-
 					//Kalman Filter
 					x3 := enemy_xh_k_1[i].At(2, 0)
 					x4 := enemy_xh_k_1[i].At(3, 0)
 					x5 := enemy_xh_k_1[i].At(4, 0)
 					x6 := enemy_xh_k_1[i].At(5, 0)
-					// our_u_k_1[i].Set(0, 0, float64(controllerRobotVelocitys[i].X))
-					// our_u_k_1[i].Set(1, 0, float64(controllerRobotVelocitys[i].Y))
-					// our_u_k_1[i].Set(2, 0, float64(controllerRobotVelocitys[i].Angular))
 
 					//サンプリング周期
 					dt := 1e-2
@@ -873,13 +820,6 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 					filtered_enemy_y[i] = float32(xh_k.At(1, 0))
 					filtered_enemy_theta[i] = float32(xh_k.At(2, 0))
 
-					// 0番目のフィルタする前と後の値を出力
-					// if i == 0 {
-					// 	fmt.Printf("X: before: %f, filtered value: %f\n", enemy.GetX(), filtered_enemy_x[i])
-					// 	fmt.Printf("Y: before: %f, filtered value: %f\n", enemy.GetY(), filtered_enemy_y[i])
-					// 	fmt.Printf("Theta: before: %f, filtered value: %f\n", enemy.GetOrientation(), filtered_enemy_theta[i])
-					// }
-
 					enemy_difference_X[i] = filtered_enemy_x[i] - pre_enemy_X[i]
 					enemy_difference_Y[i] = filtered_enemy_y[i] - pre_enemy_Y[i]
 					enemy_difference_Theta[i] = Calc_degree_normalize(filtered_enemy_theta[i] - pre_enemy_Theta[i])
@@ -902,9 +842,6 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 					pre_enemy_X[i] = filtered_enemy_x[i]
 					pre_enemy_Y[i] = filtered_enemy_y[i]
 					pre_enemy_Theta[i] = filtered_enemy_theta[i]
-
-					// log.Println("robot ", i, " speed: ", robot_speed[i])
-
 				}
 			}
 			/////////////////////////////////////
