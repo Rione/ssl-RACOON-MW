@@ -13,6 +13,7 @@ var NW_VISION_REFEREE_INTERFACE_NAME string = "nil"
 var NW_AI_IPADDR string = "127.0.0.1"
 var NW_AI_PORT string = "30011"
 var NW_AI_PORT_CONTROLLER string = "30012"
+var NW_AI_PORT_GUI string = "30013"
 var NW_REF_MAX_DATAGRAM_SIZE int = 8192 * 2
 
 var IMU_RESET_INTERVAL time.Duration = 5000 * time.Millisecond
