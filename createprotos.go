@@ -328,7 +328,7 @@ func createRefInfo(ourteam int, attackdirection int, ignore_ref_mismatch bool, g
 		redcards = 0
 	}
 
-	log.Println("[MW] Referee Command: ", command)
+	// log.Println("[MW] Referee Command: ", command)
 
 	pe := &pb_gen.Referee_Info{
 		Command:         command,
