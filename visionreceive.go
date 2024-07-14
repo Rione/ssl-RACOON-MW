@@ -7,7 +7,6 @@ import (
 	"math"
 
 	"net"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -123,7 +122,7 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 	Qv.Scale(0.1, Qvx)
 
 	// Qwx := mat.NewDiagDense(3, []float64{1, 1, 1})
-	kalman_data := []float64{0.185, 0.0, 0.0, 0.0, 0.084, 0, 0, 0, 8.3e-6}
+	kalman_data := []float64{0.004, 0.0, 0.0, 0.0, 0.004, 0, 0, 0, 4.3e-10}
 	Qw = mat.NewDense(3, 3, kalman_data)
 	// Qw.Scale(0.1, Qwx)
 
@@ -187,7 +186,7 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 	var unixtime int
 
 	// open robot_speed_file
-	robot_cords_file := new(os.File)
+	// robot_cords_file := new(os.File)
 
 	for i := 0; i < 60; i++ {
 
@@ -684,6 +683,7 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 					filtered_robot_x[i] = float32(xh_k.At(0, 0))
 					filtered_robot_y[i] = float32(xh_k.At(1, 0))
 					filtered_robot_theta[i] = float32(xh_k.At(2, 0))
+					// fmt.Println("ID: ", i, "X:", robot.GetX(), "Y:", robot.GetY(), "Theta:", robot.GetOrientation(), "Filtered X:", filtered_robot_x[i], "Filtered Y:", filtered_robot_y[i], "Filtered Theta:", filtered_robot_theta[i])
 
 					robot_difference_X[i] = filtered_robot_x[i] - pre_robot_X[i]
 					robot_difference_Y[i] = filtered_robot_y[i] - pre_robot_Y[i]
