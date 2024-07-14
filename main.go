@@ -114,8 +114,10 @@ func RunServer(chserver chan bool, reportrate uint, ourteam int, goalpose int, d
 	ipv4 := NW_AI_IPADDR
 	port := NW_AI_PORT
 	port_controller := NW_AI_PORT_CONTROLLER
+	port_gui := NW_AI_PORT_GUI
 	addr := ipv4 + ":" + port
 	addr_controller := ipv4 + ":" + port_controller
+	addr_gui := ipv4 + ":" + port_gui
 
 	log.Println("Send to:", addr)
 
@@ -123,8 +125,10 @@ func RunServer(chserver chan bool, reportrate uint, ourteam int, goalpose int, d
 	CheckError(err)
 	conn_controller, err := net.Dial("udp", addr_controller)
 	CheckError(err)
+	conn_gui, err := net.Dial("udp", addr_gui)
 	defer conn.Close()
 	defer conn_controller.Close()
+	defer conn_gui.Close()
 
 	var counter int
 
@@ -199,6 +203,7 @@ func RunServer(chserver chan bool, reportrate uint, ourteam int, goalpose int, d
 		if isvisionrecv && geometrydata != nil {
 			conn.Write([]byte(Data))
 			conn_controller.Write([]byte(Data))
+			conn_gui.Write([]byte(Data))
 		}
 
 		time.Sleep(time.Duration(reportrate) * time.Millisecond)
