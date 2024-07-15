@@ -5,7 +5,9 @@
 **_NOTE: This instruction is for Linux (Ubuntu) and MacOS. (Windows need some modification)_**
 
 This is our communication software for [RoboCup Soccer SSL](https://ssl.robocup.org/)  
-`RACOON-MW` stands for Ri-one ssl Accurate Operation Middleware
+`RACOON-MW` stands for Ri-one ssl Accurate Operation Middleware.
+
+RACOON-MW aggregates information from the Vision server and GameController and provides various useful information such as ball speed and robot speed together.
 
 ### Minimal Requirements
 
