@@ -9,7 +9,6 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-// x, y, theta の速度成分を構造体に格納
 type RobotVelocity struct {
 	X       float32
 	Y       float32
@@ -22,7 +21,6 @@ var controllerRobotVelocitys [16]RobotVelocity
 var mutex sync.Mutex
 
 func controllerFeedback(chctrlfb chan bool) {
-	// コントローラからの通信をUDPで待ち受ける
 	serverAddr := &net.UDPAddr{
 		IP:   net.ParseIP("127.0.0.1"),
 		Port: 56940,

@@ -41,7 +41,7 @@ func Update(chupdate chan bool) {
 		if robot_online_count[packet.GetRobotId()] < 5 {
 			robot_online_count[packet.GetRobotId()] += 1
 		}
-		//ロボットIDとIPアドレスの対応付け
+		//Assign IP address to robot ID
 		if robot_ipaddr[packet.GetRobotId()] != addr.IP.String() {
 			robot_ipaddr[packet.GetRobotId()] = addr.IP.String()
 			log.Println("Robot ID", packet.GetRobotId(), " is associated with ", addr.IP.String())
@@ -53,11 +53,10 @@ func Update(chupdate chan bool) {
 	}
 }
 
-// RobotのIPのリストをWebでホストする
+// Host a web server to display the robot IP addresses
 func RobotIPList(chrobotip chan bool) {
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		//ロボットのIPアドレスを表形式で表示する
-		//H1タグでタイトルを表示
+		//Set the content type to HTML
 		fmt.Fprintf(w, "<h1>The RACOON Web Console</h1>")
 		fmt.Fprintf(w, "<html><head><title>The RACOON Web Console</title></head><body><table border=\"1\">")
 		fmt.Fprintf(w, "<h2>Robot IP List</h2><tr><th>Robot ID</th><th>Associated IP Address</th><th>Beep</th></tr>")
@@ -77,28 +76,3 @@ func RobotIPList(chrobotip chan bool) {
 
 	<-chrobotip
 }
-
-// Piから自主的に送信するように変更したため、現在のところ不要
-// func updateBatteryVoltage(chbattery chan bool) {
-// 	for {
-// 		for i := 0; i < 16; i++ {
-// 			if robot_online[i] {
-// 				//CURLを実行
-// 				resp, err := http.Get("http://" + robot_ipaddr[i] + ":9191/battery")
-// 				if err != nil {
-// 					log.Println("ERR: ", err)
-// 				} else {
-// 					byteArray, _ := io.ReadAll(resp.Body)
-// 					//JSONをパース
-// 					var dat map[string]interface{}
-// 					if err := json.Unmarshal(byteArray, &dat); err != nil {
-// 						log.Println("ERR: ", err)
-// 					}
-// 					//バッテリー電圧を取得
-// 					battery_voltage[i] = float32(dat["VOLT"].(float64))
-// 				}
-// 				time.Sleep(5 * time.Second)
-// 			}
-// 		}
-// 	}
-// }

@@ -58,9 +58,9 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 	var enemy_P_k_1 [16]*mat.Dense
 	var enemy_u_k_1 [16]*mat.Dense
 
-	var m float64 = 0.046  //[kg] ボールの質量
-	var mu float64 = 0.05  //[N・s/m] ボールの粘性摩擦抵抗
-	var Ts float64 = 0.016 //[s] サンプリング周期
+	var m float64 = 0.046  //[kg] mass of the ball
+	var mu float64 = 0.05  //[N・s/m] friction coefficient
+	var Ts float64 = 0.016 //[s] sampling time
 	var K float64 = 20.0
 	var Ad_lowpass float64 = 0.818731
 	var Bd_lowpass float64 = 0.181269
@@ -247,7 +247,6 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 				unixtime, _ = strconv.Atoi(strarr[0])
 				time.Sleep(time.Duration(unixtime-before_unix_time) * time.Millisecond)
 			} else {
-				// Geometry を受け取ったのちは、Visionを受け取らない
 				n, _, err = serverConn.ReadFromUDP(buf)
 				CheckError(err)
 			}
@@ -260,10 +259,9 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 			visionwrapper[i] = packet
 			visiondetection[i] = packet.Detection
 
-			//log.Printf("Vision signal reveived from %s", addr)
 
 			// Receive Geometry Data
-			if packet.Geometry != nil { //Geometryパケットが送られていたら
+			if packet.Geometry != nil { //Geometry Data
 				geometrydata = packet.Geometry
 				//log.Println(geometrydata)
 				var lgtlp1x, lgtlp1y, lgtlp2x float32
@@ -434,7 +432,6 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 		// 	framecounter = int(1 / frameinterval)
 		// }
 
-		// //framecounterを出力
 		// log.Println("framecounter: ", framecounter)
 
 		if framecounter-pre_framecounter > 0 {
@@ -600,17 +597,16 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 					our_u_k_1[i].Set(1, 0, float64(controllerRobotVelocitys[i].Y))
 					our_u_k_1[i].Set(2, 0, float64(controllerRobotVelocitys[i].Angular))
 
-					//サンプリング周期
+					//Sampling time
 					dt := 1e-2
 
-					//観測値のtheta
+					//Observe theta
 					the := x3
 
-					//予測ステップ
+					//create A and B matrix
 					R := mat.NewDense(3, 3, []float64{math.Cos(the), -math.Sin(math.Pi), 0, math.Sin(the), math.Cos(the), 0, 0, 0, 1})
 					DR := mat.NewDense(3, 3, []float64{-math.Sin(the), math.Cos(the), 0, math.Cos(the), -math.Sin((the)), 0, 0, 0, 0})
 
-					//xh_k_1の4番目~6番目を行列として取得
 					v := mat.NewDense(3, 1, []float64{our_u_k_1[i].At(0, 0), our_u_k_1[i].At(1, 0), our_u_k_1[i].At(2, 0)})
 
 					// RA := mat.NewDense(6, 3, nil)
@@ -620,7 +616,7 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 					At.Scale(dt, R)
 					// Bx.Stack(zero2, B)
 
-					//6x6の単位行列
+					
 					I := mat.NewDense(3, 3, []float64{1, 0, 0, 0, 1, 0, 0, 0, 1})
 					Ad := mat.NewDense(3, 3, nil)
 					Bd := mat.NewDense(3, 3, nil)
@@ -651,7 +647,7 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 					Pb_k.Product(F_k_1, our_P_k_1[i], F_k_1.T())
 					Pb_k.Add(Pb_k, Qv)
 
-					//フィルタリングステップ
+					//Filtering Process
 					inv := mat.NewDense(3, 3, nil)
 					G_k := mat.NewDense(3, 3, nil)
 					xh_k := mat.NewDense(3, 1, nil)
@@ -732,21 +728,15 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 					x5 := enemy_xh_k_1[i].At(4, 0)
 					x6 := enemy_xh_k_1[i].At(5, 0)
 
-					//サンプリング周期
 					dt := 1e-2
 
-					//観測値のtheta
 					the := x3
 
-					//予測ステップ
 					R := mat.NewDense(3, 3, []float64{math.Cos(the), -math.Sin(math.Pi), 0, math.Sin(the), math.Cos(the), 0, 0, 0, 1})
 					DR := mat.NewDense(3, 3, []float64{-math.Sin(the), math.Cos(the), 0, math.Cos(the), -math.Sin((the)), 0, 0, 0, 0})
 
-					//xh_k_1の4番目~6番目を行列として取得
 					v := mat.NewDense(3, 1, []float64{x4, x5, x6})
 
-					//6x6の単位行列
-					//zero1は6x3のゼロ行列
 					zero1 := mat.NewDense(6, 3, []float64{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0})
 					zero2 := mat.NewDense(3, 3, []float64{0, 0, 0, 0, 0, 0, 0, 0, 0})
 					RA := mat.NewDense(6, 3, nil)
@@ -756,7 +746,6 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 					Ax.Augment(zero1, RA)
 					Bx.Stack(zero2, enemy_B)
 
-					//6x6の単位行列
 					I := mat.NewDense(6, 6, []float64{1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1})
 					Ad := mat.NewDense(6, 6, nil)
 					Bd := mat.NewDense(6, 3, nil)
@@ -782,12 +771,11 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 					zero3DRvdt.Augment(zero3, DRvzero4)
 					F_k_1.Augment(zero3DRvdt, zero1)
 					Adxh_k_1.Product(Ad, enemy_xh_k_1[i])
-					Bdu_k_1.Product(Bd, enemy_u_k_1[i]) //改良予定
+					Bdu_k_1.Product(Bd, enemy_u_k_1[i])
 					xhb_k.Add(Adxh_k_1, Bdu_k_1)
 					Pb_k.Product(F_k_1, enemy_P_k_1[i], F_k_1.T())
 					Pb_k.Add(Pb_k, enemy_Qv)
 
-					//フィルタリングステップ
 					inv := mat.NewDense(3, 3, nil)
 					G_k := mat.NewDense(6, 3, nil)
 					xh_k := mat.NewDense(6, 1, nil)
