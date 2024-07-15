@@ -110,7 +110,7 @@ func CheckVisionRobot(chvisrobot chan bool) {
 	}
 }
 
-func RunServer(chserver chan bool, reportrate uint, ourteam int, goalpose int, debug bool, simmode bool, ignore_ref_mismatch bool, match_mode bool, grsim_send_port int, goal_keeper uint, halfswitch int) {
+func RunServer(chserver chan bool, reportrate uint, ourteam int, goalpose int, debug bool, simmode bool, ignore_ref_mismatch bool, match_mode bool, grsim_send_port int, goal_keeper uint, halfswitch int, teamname string) {
 	ipv4 := NW_AI_IPADDR
 	port := NW_AI_PORT
 	port_controller := NW_AI_PORT_CONTROLLER
@@ -180,7 +180,7 @@ func RunServer(chserver chan bool, reportrate uint, ourteam int, goalpose int, d
 		RobotIpInfo := addRobotIPInfoToRobotIPInfos(robotip_infos)
 
 		GeometryInfo := createGeometryInfo()
-		RefereeInfo := createRefInfo(ourteam, goalpose, ignore_ref_mismatch, goal_keeper, match_mode)
+		RefereeInfo := createRefInfo(ourteam, goalpose, ignore_ref_mismatch, goal_keeper, match_mode, teamname)
 		OtherInfo := createOtherInfo(int32(goalpose), ourteam, match_mode, grsim_send_port, simmode, halfswitch)
 
 		//log.Println(OtherInfo.GetAttackDirection())
@@ -235,6 +235,7 @@ func main() {
 		initial_variance     = flag.Float64("iv", 100, "Initial Variance for Ball Kalman Filter(Default 100)")
 		process_variance     = flag.Float64("pv", 0.1, "Process Variance for Ball Kalman Filter(Default 0.1)")
 		observation_variance = flag.Float64("ov", 0.18, "Observation Variance for Ball Kalman Filter(Default 0.18)")
+		teamname             = flag.String("tn", "Ri-one", "Team Name (Default Ri-one)")
 	)
 	//OUR TEAM 0 = blue
 	//OUR TEAM 1 = yellow
@@ -302,7 +303,7 @@ func main() {
 	chrobotip := make(chan bool)
 
 	go Update(chupdate)
-	go RunServer(chserver, *reportrate, ourteam_n, goalpos_n, *debug, *simmode, *ignore_ref_mismatch, *match_mode, *grsim_send_port, *goal_keeper, halfswitch_n)
+	go RunServer(chserver, *reportrate, ourteam_n, goalpos_n, *debug, *simmode, *ignore_ref_mismatch, *match_mode, *grsim_send_port, *goal_keeper, halfswitch_n, *teamname)
 	go VisionReceive(chvision, *visionport, ourteam_n, goalpos_n, *simmode, *replay, halfswitch_n, *match_mode, *initial_variance, *process_variance, *observation_variance)
 	go CheckVisionRobot(chvisrobot)
 	go FPSCounter(chfps, ourteam_n)

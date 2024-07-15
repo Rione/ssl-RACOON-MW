@@ -204,13 +204,10 @@ func createOtherInfo(goalpos_n int32, ourteam int, match_mode bool, grsim_send_p
 	isReal := !simmode
 
 	if match_mode {
-		//マッチモードの場合は、起動フラグのourteamを無視して、Refereeから取得したチームカラーを使う
-		//また、本番モードはisRealをtrueにする
 		isReal = true
 		teamcolor = teamcolor_from_ref
 		attackdir = int32(attack_direction_from_ref)
 	} else {
-		//マッチモードでない場合は、起動フラグのourteamをそのまま使う
 		teamcolor = ourteam
 		attackdir = goalpos_n
 	}
@@ -244,7 +241,7 @@ func createOtherInfo(goalpos_n int32, ourteam int, match_mode bool, grsim_send_p
 	return pe
 }
 
-func createRefInfo(ourteam int, attackdirection int, ignore_ref_mismatch bool, goal_keeper uint, match_mode bool) *pb_gen.Referee_Info {
+func createRefInfo(ourteam int, attackdirection int, ignore_ref_mismatch bool, goal_keeper uint, match_mode bool, teamname string) *pb_gen.Referee_Info {
 	var yellowcards uint32
 	var redcards uint32
 	var command *pb_gen.Referee_Info_Command
@@ -279,10 +276,10 @@ func createRefInfo(ourteam int, attackdirection int, ignore_ref_mismatch bool, g
 
 		if !ignore_ref_mismatch && !match_mode {
 			// Check if the team color is correct
-			if ourteam == 0 && ref_command.GetYellow().GetName() == "Ri-one" {
-				log.Println("[MW WARNING!!] INCORRECT TEAM COLOR! Referee says (Ri-one == YELLOW)")
+			if ourteam == 0 && ref_command.GetYellow().GetName() == teamname {
+				log.Println("[MW WARNING!!] INCORRECT TEAM COLOR! Referee says (", teamname, "== YELLOW)")
 			} else if ourteam == 1 && ref_command.GetBlue().GetName() == "Ri-one" {
-				log.Println("[MW WARNING!!] INCORRECT TEAM COLOR! Referee says (Ri-one == Blue)")
+				log.Println("[MW WARNING!!] INCORRECT TEAM COLOR! Referee says (", teamname, "== Blue)")
 			}
 
 			// Check if the attack direction is correct
@@ -300,11 +297,11 @@ func createRefInfo(ourteam int, attackdirection int, ignore_ref_mismatch bool, g
 		}
 
 		if match_mode {
-			// Team Color を チーム名 「Ri-one」から取り出す
-			if ref_command.GetYellow().GetName() == "Ri-one" && ref_command.GetBlue().GetName() == "Ri-one" {
-				log.Println("[MW WARNING!!] Team Name is Both Ri-one! Referee says (Ri-one == YELLOW) and (Ri-one == BLUE). Forced to set team color to BLUE.")
+			// Get team color from referee
+			if ref_command.GetYellow().GetName() == teamname && ref_command.GetBlue().GetName() == teamname {
+				log.Println("[MW WARNING!!] Team Name is Both ",teamname, "! Referee says (", teamname, "== YELLOW) and (", teamname, "== BLUE). Forced to set team color to BLUE.")
 			}
-			if ref_command.GetBlue().GetName() == "Ri-one" {
+			if ref_command.GetBlue().GetName() == teamname {
 				teamcolor_from_ref = 0
 				goal_keeper_id = ref_command.GetBlue().GetGoalkeeper()
 				if ref_command.GetBlueTeamOnPositiveHalf() == true {
@@ -312,7 +309,7 @@ func createRefInfo(ourteam int, attackdirection int, ignore_ref_mismatch bool, g
 				} else {
 					attack_direction_from_ref = 1
 				}
-			} else if ref_command.GetYellow().GetName() == "Ri-one" {
+			} else if ref_command.GetYellow().GetName() == teamname {
 				teamcolor_from_ref = 1
 				goal_keeper_id = ref_command.GetYellow().GetGoalkeeper()
 				if ref_command.GetBlueTeamOnPositiveHalf() == true {
@@ -328,7 +325,6 @@ func createRefInfo(ourteam int, attackdirection int, ignore_ref_mismatch bool, g
 		redcards = 0
 	}
 
-	// log.Println("[MW] Referee Command: ", command)
 
 	pe := &pb_gen.Referee_Info{
 		Command:         command,
