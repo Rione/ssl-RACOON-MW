@@ -297,7 +297,7 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 					left_geo_goal_x = left_geo_goal_x * -1
 				}
 			}
-			log.Println("maxconfball: ", maxconfball)
+			// log.Println("maxconfball: ", maxconfball)
 			// Get Blue Robots
 			for _, robot := range packet.Detection.GetRobotsBlue() {
 				switch halfswitch_n {
