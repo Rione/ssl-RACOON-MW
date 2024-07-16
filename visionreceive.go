@@ -523,7 +523,7 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 
 				filtered_ball_x = float32(ObPosX * 1000)
 				filtered_ball_y = float32(ObPosY * 1000)
-				log.Println("filtered_ball_x: ", filtered_ball_x, "filtered_ball_y: ", filtered_ball_y, "X: ", ball.GetX(), "Y: ", ball.GetY())
+				// log.Println("filtered_ball_x: ", filtered_ball_x, "filtered_ball_y: ", filtered_ball_y, "X: ", ball.GetX(), "Y: ", ball.GetY())
 
 			}
 
