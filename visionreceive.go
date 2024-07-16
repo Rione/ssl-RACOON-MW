@@ -64,7 +64,7 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 	var K float64 = 20.0
 	var Ad_lowpass float64 = 0.818731
 	var Bd_lowpass float64 = 0.181269
-	var DeltaPmax float64 = 6 * Ts * 3
+	var DeltaPmax float64 = 6 * Ts * 4
 	var ObPosX_k_1 float64 = 0.0
 	var ObPosY_k_1 float64 = 0.0
 	var ObPosX_lowpass float64 = 0.0
@@ -502,7 +502,7 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 				// ObVelX = ObVelX * math.Exp(-mu*(m*10))
 				// ObVelY = ObVelY * math.Exp(-mu*(m*10))
 
-				if Thru_Count < 30 {
+				if Thru_Count < 150 {
 					ObPosX_lowpass = Temp_lowpassX
 					ObPosY_lowpass = Temp_lowpassY
 				} else {
