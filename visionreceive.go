@@ -219,14 +219,6 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 	// f := new(os.File)
 	// f, _ = os.OpenFile("./ball_cords.txt", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 
-	// Get Most High Confidence ball
-	var maxconfball *pb_gen.SSL_DetectionBall = &pb_gen.SSL_DetectionBall{
-		Confidence: proto.Float32(0.0),
-		X:          proto.Float32(0.0),
-		Y:          proto.Float32(0.0),
-		PixelX:     proto.Float32(0.0),
-		PixelY:     proto.Float32(0.0),
-	}
 	for {
 		var visible_in_vision_b [16]bool
 		var visible_in_vision_y [16]bool
@@ -297,7 +289,7 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 					left_geo_goal_x = left_geo_goal_x * -1
 				}
 			}
-			// log.Println("maxconfball: ", maxconfball)
+
 			// Get Blue Robots
 			for _, robot := range packet.Detection.GetRobotsBlue() {
 				switch halfswitch_n {
@@ -377,7 +369,17 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 					}
 				}
 			}
-			// is_ball_exists = true
+
+			// Get Most High Confidence ball
+			var maxconfball *pb_gen.SSL_DetectionBall = &pb_gen.SSL_DetectionBall{
+				Confidence: proto.Float32(0.0),
+				X:          proto.Float32(0.0),
+				Y:          proto.Float32(0.0),
+				PixelX:     proto.Float32(0.0),
+				PixelY:     proto.Float32(0.0),
+			}
+
+			is_ball_exists = false
 
 			if packet.Detection.GetBalls() != nil {
 				var usethisball bool
@@ -430,6 +432,8 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 		// 	frameinterval += t_received / float32(count)
 		// 	framecounter = int(1 / frameinterval)
 		// }
+
+		log.Println(ball)
 
 		// log.Println("framecounter: ", framecounter)
 
