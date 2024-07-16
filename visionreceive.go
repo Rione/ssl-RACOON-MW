@@ -58,13 +58,13 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 	var enemy_P_k_1 [16]*mat.Dense
 	var enemy_u_k_1 [16]*mat.Dense
 
-	var m float64 = 0.046  //[kg] mass of the ball
-	var mu float64 = 0.05  //[N・s/m] friction coefficient
+	var m float64 = 0.046 //[kg] mass of the ball
+	// var mu float64 = 0.05  //[N・s/m] friction coefficient
 	var Ts float64 = 0.016 //[s] sampling time
 	var K float64 = 20.0
 	var Ad_lowpass float64 = 0.818731
 	var Bd_lowpass float64 = 0.181269
-	var DeltaPmax float64 = 6 * Ts * 2
+	var DeltaPmax float64 = 6 * Ts * 3
 	var ObPosX_k_1 float64 = 0.0
 	var ObPosY_k_1 float64 = 0.0
 	var ObPosX_lowpass float64 = 0.0
@@ -81,6 +81,7 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 	var tempY_2 float64 = 0.0
 	var ObPosX float64 = 0.0
 	var ObPosY float64 = 0.0
+	var Thru_Count int = 0
 
 	// modelBallX = models.NewSimpleModel(t, 0.0, models.SimpleModelConfig{
 	// 	InitialVariance:     initial_variance,
@@ -258,7 +259,6 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 
 			visionwrapper[i] = packet
 			visiondetection[i] = packet.Detection
-
 
 			// Receive Geometry Data
 			if packet.Geometry != nil { //Geometry Data
@@ -463,14 +463,16 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 				for i := 0; i < 3; i++ {
 					DeltaX := ballPosXInMeter - float32(ObPosX_lowpass_k_1)
 					DeltaY := ballPosYInMeter - float32(ObPosY_lowpass_k_1)
-					if math.Abs(float64(DeltaX)) > DeltaPmax*1000 {
+					if math.Abs(float64(DeltaX)) > DeltaPmax {
 						tempX_2 = 0.0
+						Thru_Count++
 					} else {
 						tempX_2 = float64(ballPosXInMeter) - TempX
 					}
 
-					if math.Abs(float64(DeltaY)) > DeltaPmax*1000 {
+					if math.Abs(float64(DeltaY)) > DeltaPmax {
 						tempY_2 = 0.0
+						Thru_Count++
 					} else {
 						tempY_2 = float64(ballPosYInMeter) - TempY
 					}
@@ -497,10 +499,20 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 				ObPosY = TempY
 				ObVelX = TempVelX
 				ObVelY = TempVelY
-				ObVelX = ObVelX * math.Exp(-mu*(m*10))
-				ObVelY = ObVelY * math.Exp(-mu*(m*10))
-				ObPosX_lowpass = Temp_lowpassX
-				ObPosY_lowpass = Temp_lowpassY
+				// ObVelX = ObVelX * math.Exp(-mu*(m*10))
+				// ObVelY = ObVelY * math.Exp(-mu*(m*10))
+
+				if Thru_Count < 30 {
+					ObPosX_lowpass = Temp_lowpassX
+					ObPosY_lowpass = Temp_lowpassY
+				} else {
+					ObPosX_lowpass = float64(ballPosXInMeter)
+					ObPosY_lowpass = float64(ballPosYInMeter)
+					ObPosX = float64(ballPosXInMeter)
+					ObPosY = float64(ballPosYInMeter)
+					ObVelX = 0.0
+					ObVelY = 0.0
+				}
 
 				ObPosX_k_1 = TempX
 				ObPosY_k_1 = TempY
@@ -508,8 +520,10 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 				ObVelY_k_1 = ObVelY
 				ObPosX_lowpass_k_1 = ObPosX_lowpass
 				ObPosY_lowpass_k_1 = ObPosY_lowpass
+
 				filtered_ball_x = float32(ObPosX * 1000)
 				filtered_ball_y = float32(ObPosY * 1000)
+				log.Println("filtered_ball_x: ", filtered_ball_x, "filtered_ball_y: ", filtered_ball_y, "X: ", ball.GetX(), "Y: ", ball.GetY())
 
 			}
 
@@ -616,7 +630,6 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 					At.Scale(dt, R)
 					// Bx.Stack(zero2, B)
 
-					
 					I := mat.NewDense(3, 3, []float64{1, 0, 0, 0, 1, 0, 0, 0, 1})
 					Ad := mat.NewDense(3, 3, nil)
 					Bd := mat.NewDense(3, 3, nil)
