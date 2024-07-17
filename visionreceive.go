@@ -378,7 +378,8 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 				PixelX:     proto.Float32(0.0),
 				PixelY:     proto.Float32(0.0),
 			}
-			// is_ball_exists = true
+
+			is_ball_exists = false
 
 			if packet.Detection.GetBalls() != nil {
 				var usethisball bool
