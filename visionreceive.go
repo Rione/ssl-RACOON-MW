@@ -433,8 +433,6 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 		// 	framecounter = int(1 / frameinterval)
 		// }
 
-		log.Println(ball)
-
 		// log.Println("framecounter: ", framecounter)
 
 		if framecounter-pre_framecounter > 0 {
