@@ -16,6 +16,9 @@ var NW_AI_PORT_CONTROLLER string = "30012"
 var NW_AI_PORT_GUI string = "30013"
 var NW_REF_MAX_DATAGRAM_SIZE int = 8192 * 2
 
+var OTHER_IPADDR string = "224.12.3.21"
+var OTHER_PORT string = "30006"
+
 var IMU_RESET_INTERVAL time.Duration = 5000 * time.Millisecond
 
 var MAX_AVAILABLE_TIMEOUTS int = 5
