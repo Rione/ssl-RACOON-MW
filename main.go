@@ -13,7 +13,6 @@ import (
 )
 
 func FPSCounter(chfps chan bool, ourteam int) {
-	imu_reset_time = time.Now()
 	for {
 		//Calculate Online Robot IDs
 		var online_robot_id_str string
@@ -30,8 +29,7 @@ func FPSCounter(chfps chan bool, ourteam int) {
 
 			framecounter = 0
 
-			//Time to second
-			log.Printf("Estimated FPS:  %d FPS // Last IMU Reset Time %s ago", fps, time.Duration(time.Since(imu_reset_time).Seconds())*time.Second)
+			log.Printf("Estimated FPS:  %d FPS", fps)
 			log.Printf("Vision: %t, Connected Robots: %s", isvisionrecv, online_robot_id_str)
 			var our_yellows int
 			var our_reds int
@@ -119,8 +117,8 @@ func RunServer(chserver chan bool, reportrate uint, ourteam int, goalpose int, d
 	addr_controller := ipv4 + ":" + port_controller
 	addr_gui := ipv4 + ":" + port_gui
 
-	ip_other := OTHER_IPADDR
-	port_other := OTHER_PORT
+	ip_other := NW_OUT_MCAST_IPADDR
+	port_other := NW_OUT_MCAST_PORT
 	addr_other := ip_other + ":" + port_other
 
 	log.Println("Send to:", addr)

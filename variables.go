@@ -1,8 +1,6 @@
 package main
 
 import (
-	"time"
-
 	"github.com/Rione-SSL/RACOON-MW/proto/pb_gen"
 )
 
@@ -10,16 +8,16 @@ var BALL_MOVING_THRESHOULD_SPEED float32 = 1000
 
 var NW_ROBOT_UPDATE_INTERFACE_NAME string = "nil"
 var NW_VISION_REFEREE_INTERFACE_NAME string = "nil"
-var NW_AI_IPADDR string = "127.0.0.1"
-var NW_AI_PORT string = "30011"
-var NW_AI_PORT_CONTROLLER string = "30012"
-var NW_AI_PORT_GUI string = "30013"
+
+var NW_AI_IPADDR string = "127.0.0.1"      //DEPRECATED
+var NW_AI_PORT string = "30011"            //DEPRECATED
+var NW_AI_PORT_CONTROLLER string = "30012" //DEPRECATED
+var NW_AI_PORT_GUI string = "30013"        //DEPRECATED
+
 var NW_REF_MAX_DATAGRAM_SIZE int = 8192 * 2
 
-var OTHER_IPADDR string = "224.12.3.21"
-var OTHER_PORT string = "30006"
-
-var IMU_RESET_INTERVAL time.Duration = 5000 * time.Millisecond
+var NW_OUT_MCAST_IPADDR string = "224.12.3.21"
+var NW_OUT_MCAST_PORT string = "30006"
 
 var MAX_AVAILABLE_TIMEOUTS int = 5
 
@@ -102,11 +100,6 @@ var filtered_robot_theta [16]float32
 var filtered_enemy_x [16]float32
 var filtered_enemy_y [16]float32
 var filtered_enemy_theta [16]float32
-
-var ball_x_history []float32
-var ball_y_history []float32
-
-var imu_reset_time time.Time
 
 var robot_online [16]bool
 
