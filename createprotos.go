@@ -278,7 +278,7 @@ func createRefInfo(ourteam int, attackdirection int, ignore_ref_mismatch bool, g
 			// Check if the team color is correct
 			if ourteam == 0 && ref_command.GetYellow().GetName() == teamname {
 				log.Println("[MW WARNING!!] INCORRECT TEAM COLOR! Referee says (", teamname, "== YELLOW)")
-			} else if ourteam == 1 && ref_command.GetBlue().GetName() == "Ri-one" {
+			} else if ourteam == 1 && ref_command.GetBlue().GetName() == teamname {
 				log.Println("[MW WARNING!!] INCORRECT TEAM COLOR! Referee says (", teamname, "== Blue)")
 			}
 
@@ -299,7 +299,7 @@ func createRefInfo(ourteam int, attackdirection int, ignore_ref_mismatch bool, g
 		if match_mode {
 			// Get team color from referee
 			if ref_command.GetYellow().GetName() == teamname && ref_command.GetBlue().GetName() == teamname {
-				log.Println("[MW WARNING!!] Team Name is Both ",teamname, "! Referee says (", teamname, "== YELLOW) and (", teamname, "== BLUE). Forced to set team color to BLUE.")
+				log.Println("[MW WARNING!!] Team Name is Both ", teamname, "! Referee says (", teamname, "== YELLOW) and (", teamname, "== BLUE). Forced to set team color to BLUE.")
 			}
 			if ref_command.GetBlue().GetName() == teamname {
 				teamcolor_from_ref = 0
@@ -324,7 +324,6 @@ func createRefInfo(ourteam int, attackdirection int, ignore_ref_mismatch bool, g
 		yellowcards = 0
 		redcards = 0
 	}
-
 
 	pe := &pb_gen.Referee_Info{
 		Command:         command,
