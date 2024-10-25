@@ -313,6 +313,7 @@ func main() {
 	chvisrobot := make(chan bool)
 	chctrlfb := make(chan bool)
 	chrobotip := make(chan bool)
+	chstreaming := make(chan bool)
 
 	go Update(chupdate)
 	go RunServer(chserver, *reportrate, ourteam_n, goalpos_n, *debug, *simmode, *ignore_ref_mismatch, *match_mode, *grsim_send_port, *goal_keeper, halfswitch_n, *teamname)
@@ -322,6 +323,7 @@ func main() {
 	go RefereeClient(chref, *gcport)
 	go controllerFeedback(chctrlfb)
 	go RobotIPList(chrobotip)
+	go Streaming(chstreaming)
 
 	<-chupdate
 	<-chserver
@@ -331,6 +333,7 @@ func main() {
 	<-chvisrobot
 	<-chctrlfb
 	<-chrobotip
+	<-chstreaming
 
 }
 
