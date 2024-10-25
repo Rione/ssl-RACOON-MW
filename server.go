@@ -53,7 +53,6 @@ func (s *ImageServer) ClientStream(stream imagepb.ImageService_ClientStreamServe
 			break
 		}
 
-		fmt.Println(res.Image)
 		imgData, err := gocv.IMDecode(res.Image, gocv.IMReadColor)
 		if err != nil {
 			log.Printf("failed to decode image: %v", err)
