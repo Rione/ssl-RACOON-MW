@@ -417,36 +417,35 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 					flag_ball = true
 				}
 
-			}
-
-			if packet.Detection.GetBalls() == nil && initial_flag {
-				if halfswitch_n == 1 {
-					ball = &pb_gen.SSL_DetectionBall{
-						Confidence: proto.Float32(0.0),
-						X:          proto.Float32(0.0),
-						Y:          proto.Float32(0.0),
-						PixelX:     proto.Float32(0.0),
-						PixelY:     proto.Float32(0.0),
-					}
-				} else if halfswitch_n == -1 {
-					ball = &pb_gen.SSL_DetectionBall{
-						Confidence: proto.Float32(0.0),
-						X:          proto.Float32(0.0),
-						Y:          proto.Float32(0.0),
-						PixelX:     proto.Float32(0.0),
-						PixelY:     proto.Float32(0.0),
-					}
-				} else {
-					ball = &pb_gen.SSL_DetectionBall{
-						Confidence: proto.Float32(0.0),
-						X:          proto.Float32(0.0),
-						Y:          proto.Float32(0.0),
-						PixelX:     proto.Float32(0.0),
-						PixelY:     proto.Float32(0.0),
+			} else {
+				if initial_flag {
+					if halfswitch_n == 1 {
+						ball = &pb_gen.SSL_DetectionBall{
+							Confidence: proto.Float32(0.0),
+							X:          proto.Float32(150.0),
+							Y:          proto.Float32(0.0),
+							PixelX:     proto.Float32(0.0),
+							PixelY:     proto.Float32(0.0),
+						}
+					} else if halfswitch_n == -1 {
+						ball = &pb_gen.SSL_DetectionBall{
+							Confidence: proto.Float32(0.0),
+							X:          proto.Float32(-150.0),
+							Y:          proto.Float32(0.0),
+							PixelX:     proto.Float32(0.0),
+							PixelY:     proto.Float32(0.0),
+						}
+					} else {
+						ball = &pb_gen.SSL_DetectionBall{
+							Confidence: proto.Float32(0.0),
+							X:          proto.Float32(0.0),
+							Y:          proto.Float32(0.0),
+							PixelX:     proto.Float32(0.0),
+							PixelY:     proto.Float32(0.0),
+						}
 					}
 				}
 			}
-
 		}
 		framecounter++
 		// count++
