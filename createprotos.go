@@ -209,7 +209,7 @@ func createOtherInfo(goalpos_n int32, ourteam int, match_mode bool, grsim_send_p
 		attackdir = int32(attack_direction_from_ref)
 	} else {
 		teamcolor = ourteam
-		attackdir = goalpos_n
+		attackdir = goalpos_n * -1
 	}
 
 	if teamcolor == 1 { //YELLOW
