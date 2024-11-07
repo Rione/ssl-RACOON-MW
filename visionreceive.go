@@ -234,7 +234,7 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 		}
 
 		var is_ball_exists bool = false
-		var flag_ball bool = false
+		flag_ball = false
 		// var get_ball bool = false
 		for i := 0; i < maxcameras; i++ {
 			var n int
@@ -447,6 +447,7 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 				}
 			}
 		}
+		log.Print("flag_ball: ", flag_ball)
 		framecounter++
 		// count++
 
@@ -555,7 +556,7 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 				filtered_ball_x = float32(ObPosX * 1000)
 				filtered_ball_y = float32(ObPosY * 1000)
 				// log.Println("filtered_ball_x: ", filtered_ball_x, "filtered_ball_y: ", filtered_ball_y, "X: ", ball.GetX(), "Y: ", ball.GetY())
-				log.Println("ball_x: ", ball.GetX(), "ball_y: ", ball.GetY())
+				// log.Println("ball_x: ", ball.GetX(), "ball_y: ", ball.GetY())
 
 			}
 

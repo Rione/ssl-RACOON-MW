@@ -237,6 +237,7 @@ func createOtherInfo(goalpos_n int32, ourteam int, match_mode bool, grsim_send_p
 		IsHalfCourt:            &isHalfcourt,
 		IsMatchmode:            &match_mode,
 		GrsimCommandListenPort: &grSimSendPort,
+		IsBallVisible:          &flag_ball,
 	}
 	return pe
 }
@@ -299,7 +300,7 @@ func createRefInfo(ourteam int, attackdirection int, ignore_ref_mismatch bool, g
 		if match_mode {
 			// Get team color from referee
 			if ref_command.GetYellow().GetName() == teamname && ref_command.GetBlue().GetName() == teamname {
-				log.Println("[MW WARNING!!] Team Name is Both ",teamname, "! Referee says (", teamname, "== YELLOW) and (", teamname, "== BLUE). Forced to set team color to BLUE.")
+				log.Println("[MW WARNING!!] Team Name is Both ", teamname, "! Referee says (", teamname, "== YELLOW) and (", teamname, "== BLUE). Forced to set team color to BLUE.")
 			}
 			if ref_command.GetBlue().GetName() == teamname {
 				teamcolor_from_ref = 0
@@ -324,7 +325,6 @@ func createRefInfo(ourteam int, attackdirection int, ignore_ref_mismatch bool, g
 		yellowcards = 0
 		redcards = 0
 	}
-
 
 	pe := &pb_gen.Referee_Info{
 		Command:         command,

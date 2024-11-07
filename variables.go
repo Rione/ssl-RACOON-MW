@@ -112,3 +112,5 @@ var robot_online [16]bool
 
 var teamcolor_from_ref int = -1
 var attack_direction_from_ref int = 0
+
+var flag_ball bool = false
