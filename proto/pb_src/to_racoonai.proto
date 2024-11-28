@@ -205,6 +205,7 @@ message Referee_Info {
     optional Command next_command = 10;
     optional float ball_placement_x = 11;
     optional float ball_placement_y = 12;
+    optional int32 current_action_time_remaining = 13;
 }
 
 message RobotIP_Infos {
