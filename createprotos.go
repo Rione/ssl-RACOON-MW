@@ -253,6 +253,7 @@ func createRefInfo(ourteam int, attackdirection int, ignore_ref_mismatch bool, g
 	var bpX float32
 	var bpY float32
 	var gameevent []*pb_gen.GameEvent
+	var current_action_time_remaining int32
 
 	goal_keeper_id := uint32(goal_keeper)
 
@@ -263,6 +264,7 @@ func createRefInfo(ourteam int, attackdirection int, ignore_ref_mismatch bool, g
 		bpX = ref_command.GetDesignatedPosition().GetX()
 		bpY = ref_command.GetDesignatedPosition().GetY()
 		gameevent = ref_command.GetGameEvents()
+		current_action_time_remaining = int32(ref_command.GetCurrentActionTimeRemaining())
 		if ourteam == 0 {
 			yellowcards = ref_command.Blue.GetYellowCards()
 			redcards = ref_command.Blue.GetRedCards()
@@ -327,18 +329,19 @@ func createRefInfo(ourteam int, attackdirection int, ignore_ref_mismatch bool, g
 	}
 
 	pe := &pb_gen.Referee_Info{
-		Command:         command,
-		Stage:           stage,
-		TeaminfoOur:     teaminfo_our,
-		TeaminfoTheir:   teaminfo_their,
-		YellowCards:     &yellowcards,
-		RedCards:        &redcards,
-		Event:           gameevent,
-		PreCommand:      last_command,
-		NextCommand:     next_command,
-		BallPlacementX:  &bpX,
-		BallPlacementY:  &bpY,
-		OurGoalkeeperId: &goal_keeper_id,
+		Command:                    command,
+		Stage:                      stage,
+		TeaminfoOur:                teaminfo_our,
+		TeaminfoTheir:              teaminfo_their,
+		YellowCards:                &yellowcards,
+		RedCards:                   &redcards,
+		Event:                      gameevent,
+		PreCommand:                 last_command,
+		NextCommand:                next_command,
+		BallPlacementX:             &bpX,
+		BallPlacementY:             &bpY,
+		OurGoalkeeperId:            &goal_keeper_id,
+		CurrentActionTimeRemaining: &current_action_time_remaining,
 	}
 	return pe
 }
