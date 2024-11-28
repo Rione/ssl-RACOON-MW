@@ -447,7 +447,7 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 				}
 			}
 		}
-		log.Print("flag_ball: ", flag_ball)
+		// log.Print("flag_ball: ", flag_ball)
 		framecounter++
 		// count++
 
