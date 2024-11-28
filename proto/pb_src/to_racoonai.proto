@@ -38,6 +38,7 @@ message Ball_Info {
   required float intercept = 9;
   required float speed = 10;
   required float slope = 11;
+  required bool is_visible = 12;
 }
 
 message Geometry_Info {
@@ -224,7 +225,6 @@ message Other_Infos {
     required bool is_half_court = 10;
     required bool is_matchmode = 11; // true: ignore mw option(simmode, halfcourt, teamcolor)
     required uint32 grsim_command_listen_port = 12; // default 20011
-    required bool is_ball_visible = 13;
 }
 
 message RacoonMW_Packet {

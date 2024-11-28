@@ -125,6 +125,7 @@ func createBallInfo() *pb_gen.Ball_Info {
 		Intercept:   &intercept,
 		Speed:       &speed,
 		Slope:       &slope,
+		IsVisible:   &flag_ball,
 	}
 	return pe
 }
@@ -237,7 +238,6 @@ func createOtherInfo(goalpos_n int32, ourteam int, match_mode bool, grsim_send_p
 		IsHalfCourt:            &isHalfcourt,
 		IsMatchmode:            &match_mode,
 		GrsimCommandListenPort: &grSimSendPort,
-		IsBallVisible:          &flag_ball,
 	}
 	return pe
 }
