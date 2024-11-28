@@ -125,6 +125,7 @@ func createBallInfo() *pb_gen.Ball_Info {
 		Intercept:   &intercept,
 		Speed:       &speed,
 		Slope:       &slope,
+		IsVisible:   &flag_ball,
 	}
 	return pe
 }

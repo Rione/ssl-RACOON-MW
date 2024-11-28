@@ -38,6 +38,7 @@ message Ball_Info {
   required float intercept = 9;
   required float speed = 10;
   required float slope = 11;
+  required bool is_visible = 12;
 }
 
 message Geometry_Info {

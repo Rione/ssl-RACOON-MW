@@ -82,6 +82,7 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 	var ObPosX float64 = 0.0
 	var ObPosY float64 = 0.0
 	var Thru_Count int = 0
+	var initial_flag bool = true
 
 	// modelBallX = models.NewSimpleModel(t, 0.0, models.SimpleModelConfig{
 	// 	InitialVariance:     initial_variance,
@@ -233,7 +234,7 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 		}
 
 		var is_ball_exists bool = false
-		var flag_ball bool = false
+		flag_ball = false
 		// var get_ball bool = false
 		for i := 0; i < maxcameras; i++ {
 			var n int
@@ -383,6 +384,7 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 
 			if packet.Detection.GetBalls() != nil {
 				var usethisball bool
+
 				for _, fball := range packet.Detection.GetBalls() {
 					usethisball = true
 					if halfswitch_n == 1 {
@@ -403,6 +405,7 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 						}
 						is_ball_exists = true
 						flag_ball = true
+						initial_flag = false
 					}
 				}
 
@@ -414,9 +417,37 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 					flag_ball = true
 				}
 
+			} else {
+				if initial_flag {
+					if halfswitch_n == 1 {
+						ball = &pb_gen.SSL_DetectionBall{
+							Confidence: proto.Float32(0.0),
+							X:          proto.Float32(150.0),
+							Y:          proto.Float32(0.0),
+							PixelX:     proto.Float32(0.0),
+							PixelY:     proto.Float32(0.0),
+						}
+					} else if halfswitch_n == -1 {
+						ball = &pb_gen.SSL_DetectionBall{
+							Confidence: proto.Float32(0.0),
+							X:          proto.Float32(-150.0),
+							Y:          proto.Float32(0.0),
+							PixelX:     proto.Float32(0.0),
+							PixelY:     proto.Float32(0.0),
+						}
+					} else {
+						ball = &pb_gen.SSL_DetectionBall{
+							Confidence: proto.Float32(0.0),
+							X:          proto.Float32(0.0),
+							Y:          proto.Float32(0.0),
+							PixelX:     proto.Float32(0.0),
+							PixelY:     proto.Float32(0.0),
+						}
+					}
+				}
 			}
-
 		}
+		log.Print("flag_ball: ", flag_ball)
 		framecounter++
 		// count++
 
@@ -525,6 +556,7 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 				filtered_ball_x = float32(ObPosX * 1000)
 				filtered_ball_y = float32(ObPosY * 1000)
 				// log.Println("filtered_ball_x: ", filtered_ball_x, "filtered_ball_y: ", filtered_ball_y, "X: ", ball.GetX(), "Y: ", ball.GetY())
+				// log.Println("ball_x: ", ball.GetX(), "ball_y: ", ball.GetY())
 
 			}
 
