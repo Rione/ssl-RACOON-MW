@@ -50,8 +50,8 @@ func Update(chupdate chan bool) {
 		battery_voltage[packet.RobotsStatus.GetRobotId()] = float32(*packet.RobotsStatus.BatteryVoltage) / 10
 		cap_power[packet.RobotsStatus.GetRobotId()] = uint8(packet.RobotsStatus.GetCapPower())
 		is_ball_exit = packet.BallsStatus.GetIsBallExit()
-		image_x = packet.BallsStatus.GetImageX()
-		image_y = packet.BallsStatus.GetImageY()
+		ball_camera_X = packet.BallsStatus.GetBallCameraX()
+		ball_camera_Y = packet.BallsStatus.GetBallCameraY()
 
 	}
 }

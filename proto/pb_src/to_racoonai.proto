@@ -40,8 +40,8 @@ message Ball_Info {
   required float slope = 11;
   required bool is_visible = 12;
   required bool is_ball_exit = 13;
-  required float image_x = 14;
-  required float image_y = 15; 
+  required float ball_camera_x = 14;
+  required float ball_camera_y = 15; 
 }
 
 message Geometry_Info {

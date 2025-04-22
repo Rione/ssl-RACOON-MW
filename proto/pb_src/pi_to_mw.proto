@@ -16,6 +16,6 @@ message Robot_Status {
 
 message Ball_Status {
   required bool is_ball_exit = 1;
-  required float image_x = 2;
-  required float image_y = 3;
+  required float ball_camera_x = 2;
+  required float ball_camera_y = 3;
 }
