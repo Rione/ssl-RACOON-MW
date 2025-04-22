@@ -113,6 +113,10 @@ func createBallInfo() *pb_gen.Ball_Info {
 	var speed float32 = ball_speed
 	var diffx float32 = ball_difference_X
 	var diffy float32 = ball_difference_Y
+	var flag_ball bool = is_ball_exit
+	var imagex float32 = image_x
+	var imagey float32 = image_y
+
 	pe := &pb_gen.Ball_Info{
 		FilteredX:   &filtered_ball_x,
 		FilteredY:   &filtered_ball_y,
@@ -126,6 +130,9 @@ func createBallInfo() *pb_gen.Ball_Info {
 		Speed:       &speed,
 		Slope:       &slope,
 		IsVisible:   &flag_ball,
+		IsBallExit:  &is_ball_exit,
+		ImageX:      &imagex,
+		ImageY:      &imagey,
 	}
 	return pe
 }

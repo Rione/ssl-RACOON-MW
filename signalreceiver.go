@@ -34,21 +34,24 @@ func Update(chupdate chan bool) {
 		n, addr, err := serverConn.ReadFromUDP(buf)
 		CheckError(err)
 
-		packet := &pb_gen.Robot_Status{}
+		packet := &pb_gen.PiToMw{}
 		err = proto.Unmarshal(buf[0:n], packet)
 		CheckError(err)
-		balldetect[packet.GetRobotId()] = packet.GetInfrared()
-		if robot_online_count[packet.GetRobotId()] < 5 {
-			robot_online_count[packet.GetRobotId()] += 1
+		balldetect[packet.RobotsStatus.GetRobotId()] = packet.RobotsStatus.GetInfrared()
+		if robot_online_count[packet.RobotsStatus.GetRobotId()] < 5 {
+			robot_online_count[packet.RobotsStatus.GetRobotId()] += 1
 		}
 		//Assign IP address to robot ID
-		if robot_ipaddr[packet.GetRobotId()] != addr.IP.String() {
-			robot_ipaddr[packet.GetRobotId()] = addr.IP.String()
-			log.Println("Robot ID", packet.GetRobotId(), " is associated with ", addr.IP.String())
+		if robot_ipaddr[packet.RobotsStatus.GetRobotId()] != addr.IP.String() {
+			robot_ipaddr[packet.RobotsStatus.GetRobotId()] = addr.IP.String()
+			log.Println("Robot ID", packet.RobotsStatus.GetRobotId(), " is associated with ", addr.IP.String())
 		}
 
-		battery_voltage[packet.GetRobotId()] = float32(packet.GetBatteryVoltage()) / 10
-		cap_power[packet.GetRobotId()] = uint8(packet.GetCapPower())
+		battery_voltage[packet.RobotsStatus.GetRobotId()] = float32(*packet.RobotsStatus.BatteryVoltage) / 10
+		cap_power[packet.RobotsStatus.GetRobotId()] = uint8(packet.RobotsStatus.GetCapPower())
+		is_ball_exit = packet.BallsStatus.GetIsBallExit()
+		image_x = packet.BallsStatus.GetImageX()
+		image_y = packet.BallsStatus.GetImageY()
 
 	}
 }

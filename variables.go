@@ -107,3 +107,7 @@ var teamcolor_from_ref int = -1
 var attack_direction_from_ref int = 0
 
 var flag_ball bool = false
+
+var is_ball_exit bool
+var image_x float32
+var image_y float32

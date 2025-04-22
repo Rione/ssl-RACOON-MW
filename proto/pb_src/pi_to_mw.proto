@@ -2,8 +2,9 @@ syntax = "proto2";
 
 option go_package = "github.com/Rione/ssl-RACOON-Pi2/proto/pb_gen";
 
-message Robots_Status{
-  repeated Robot_Status robots_status = 1;
+message PiToMw{
+  required Robot_Status robots_status = 1;
+  required Ball_Status balls_status = 2;
 }
 
 message Robot_Status {
@@ -11,4 +12,10 @@ message Robot_Status {
   required bool infrared   = 2;
   required uint32 battery_voltage  = 3;
   required uint32 cap_power  = 4;
+}
+
+message Ball_Status {
+  required bool is_ball_exit = 1;
+  required float image_x = 2;
+  required float image_y = 3;
 }

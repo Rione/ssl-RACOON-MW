@@ -39,6 +39,9 @@ message Ball_Info {
   required float speed = 10;
   required float slope = 11;
   required bool is_visible = 12;
+  required bool is_ball_exit = 13;
+  required float image_x = 14;
+  required float image_y = 15; 
 }
 
 message Geometry_Info {
