@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/base64"
 	"fmt"
 	"log"
 	"net"
@@ -55,69 +54,43 @@ func Update(chupdate chan bool) {
 	}
 }
 
-func StartImageReceiver() {
-	ln, err := net.Listen("tcp", ":9191")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer ln.Close()
-
-	for {
-		conn, err := ln.Accept()
-		if err != nil {
-			log.Println("Error accepting connection:", err)
-			continue
-		}
-		go func(c net.Conn) {
-			defer c.Close()
-			// Read the image data from the connection
-			buf := make([]byte, 1024)
-			n, err := c.Read(buf)
-			if err == nil && n > 0 {
-				latestImage <- buf[:n]
-				log.Println("Received image data of size:", n)
-			} else {
-				log.Println("Error reading image data:", err)
-			}
-		}(conn)
-	}
-}
-
 // Host a web server to display the robot IP addresses
 func RobotIPList(chrobotip chan bool) {
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		fmt.Fprintf(w, "<html><head><title>The RACOON Web Console</title>")
 		fmt.Fprintf(w, `<script>
-						function showImage(ip, id) {
-							document.getElementById("photo").src = "http://" + ip + ":9191/photo";
-							document.getElementById("phototitle").innerText = "Robot " + id + "'s Photo";
+						function showImage(endpoint, id) {
+							fetch(endpoint)
+								.then(response => {
+									if (!response.ok) {
+										throw new Error("Network Error: " + response.status);
+									}
+									return response.json();
+										})
+								.then(data => {
+									document.getElementById("image").src = "data:image/jpeg;base64," + data.image;
+								})
+							document.getElementById("imagetitle").innerText = "Robot " + id + "'s Image";
 						}
 						</script>`)
 		fmt.Fprintf(w, "</head><body><h1>The RACOON Web Console</h1>")
 		fmt.Fprintf(w, "<table border=\"1\"><h2>Robot IP List</h2><tr><th>Robot ID</th><th>Associated IP Address</th><th>Beep</th><th>Image</th></tr>")
 		for i := 0; i < 16; i++ {
 			buzzurl := fmt.Sprintf("http://%s:9191/buzzer/tone/%s/1000", robot_ipaddr[i], strconv.Itoa(i))
+			image := fmt.Sprintf("http://%s:9191/image", robot_ipaddr[i])
 			fmt.Fprintf(w,
 				"<tr><td>%d</td><td>%s</td><td><button onclick='location.href=\"%s\"'>Beep</button></td><td><button onclick='showImage(\"%s\", %d)'>Image</button></td></tr>",
-				i, robot_ipaddr[i], buzzurl, robot_ipaddr[i], i)
+				i, robot_ipaddr[i], buzzurl, image, i)
 		}
 		fmt.Fprintf(w, "</table>")
 		fmt.Fprintf(w, "<h2>Vision Status: %t</h2>", isvisionrecv)
 		fmt.Fprintf(w, "<p>Generated at %s</p>", time.Now().Format(time.RFC1123))
 
-		fmt.Fprintf(w, "<h2 id='phototitle'>Robot Photo</h2>")
-		select {
-		case Image := <-latestImage:
-			base64Image := base64.StdEncoding.EncodeToString(Image)
-			fmt.Fprintf(w, "<img id='photo' src='data:image/jpeg;base64,%s' alt='Robot Image' style='max-width: 100%%; height: auto;' />", base64Image)
-		default:
-			fmt.Fprintf(w, "<img id='photo' src='' width='320' alt='No Image Selected'/>")
-		}
+		fmt.Fprintf(w, "<h2 id='imagetitle'>Robot Image</h2>")
+		fmt.Fprintf(w, "<img id='image' src='' width='320' alt='No Image Selected'/>")
 		fmt.Fprintf(w, "</body></html>")
 	})
-
-	go StartImageReceiver()
 
 	log.Fatal(http.ListenAndServe(":8080", nil))
 
