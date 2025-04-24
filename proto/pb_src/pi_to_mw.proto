@@ -12,3 +12,10 @@ message Robot_Status {
   required uint32 battery_voltage  = 3;
   required uint32 cap_power  = 4;
 }
+
+message Ball {
+  required string min_threshold = 1;
+  required string max_threshold = 2;
+  required int32 ball_detect_radius = 3;
+  required float circularity_threshold = 4;
+}
