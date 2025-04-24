@@ -108,6 +108,6 @@ var attack_direction_from_ref int = 0
 
 var flag_ball bool = false
 
-var is_ball_exit bool
-var ball_camera_X float32
-var ball_camera_Y float32
+var is_ball_exit [16]bool
+var ball_camera_X [16]float32
+var ball_camera_Y [16]float32

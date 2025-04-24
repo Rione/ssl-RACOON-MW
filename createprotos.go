@@ -52,6 +52,8 @@ func createRobotInfo(i int, ourteam int, simmode bool) *pb_gen.Robot_Infos {
 		Visible:           &ourrobot_is_visible[i],
 		BatteryVoltage:    &batt,
 		CapPower:          &cap_power,
+		BallCameraX:       &ball_camera_X[i],
+		BallCameraY:       &ball_camera_Y[i],
 	}
 	return pe
 }
@@ -113,9 +115,6 @@ func createBallInfo() *pb_gen.Ball_Info {
 	var speed float32 = ball_speed
 	var diffx float32 = ball_difference_X
 	var diffy float32 = ball_difference_Y
-	var flag_ball bool = is_ball_exit
-	var camerax float32 = ball_camera_X
-	var cameray float32 = ball_camera_Y
 
 	pe := &pb_gen.Ball_Info{
 		FilteredX:   &filtered_ball_x,
@@ -130,9 +129,6 @@ func createBallInfo() *pb_gen.Ball_Info {
 		Speed:       &speed,
 		Slope:       &slope,
 		IsVisible:   &flag_ball,
-		IsBallExit:  &is_ball_exit,
-		BallCameraX: &camerax,
-		BallCameraY: &cameray,
 	}
 	return pe
 }
