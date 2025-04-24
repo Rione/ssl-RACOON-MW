@@ -49,10 +49,13 @@ func Update(chupdate chan bool) {
 
 		battery_voltage[packet.RobotsStatus.GetRobotId()] = float32(*packet.RobotsStatus.BatteryVoltage) / 10
 		cap_power[packet.RobotsStatus.GetRobotId()] = uint8(packet.RobotsStatus.GetCapPower())
-		is_ball_exit[packet.RobotsStatus.GetRobotId()] = packet.BallsStatus.GetIsBallExit()
-		ball_camera_X[packet.RobotsStatus.GetRobotId()] = packet.BallsStatus.GetBallCameraX()
-		ball_camera_Y[packet.RobotsStatus.GetRobotId()] = packet.BallsStatus.GetBallCameraY()
-
+		is_ball_exit[packet.RobotsStatus.GetRobotId()] = packet.BallStatus.GetIsBallExit()
+		ball_camera_X[packet.RobotsStatus.GetRobotId()] = packet.BallStatus.GetBallCameraX()
+		ball_camera_Y[packet.RobotsStatus.GetRobotId()] = packet.BallStatus.GetBallCameraY()
+		adjustment[packet.RobotsStatus.GetRobotId()].Max_Threshold = packet.Ball.GetMaxThreshold()
+		adjustment[packet.RobotsStatus.GetRobotId()].Min_Threshold = packet.Ball.GetMinThreshold()
+		adjustment[packet.RobotsStatus.GetRobotId()].Ball_Detect_Radius = packet.Ball.GetBallDetectRadius()
+		adjustment[packet.RobotsStatus.GetRobotId()].Circularity_Threshold = packet.Ball.GetCircularityThreshold()
 	}
 }
 
@@ -62,10 +65,10 @@ func RobotIPList(chrobotip chan bool) {
 		//Set the content type to HTML
 		fmt.Fprintf(w, "<h1>The RACOON Web Console</h1>")
 		fmt.Fprintf(w, "<html><head><title>The RACOON Web Console</title></head><body><table border=\"1\">")
-		fmt.Fprintf(w, "<h2>Robot IP List</h2><tr><th>Robot ID</th><th>Associated IP Address</th><th>Beep</th></tr>")
+		fmt.Fprintf(w, "<tr><th>Robot ID</th><th>Associated IP Address</th><th>Beep</th><th>Min Threshold</th><th>Max Threshold</th><th>Radius</th><th>Circularity</th></tr>")
 		for i := 0; i < 16; i++ {
 			buzzurl := fmt.Sprintf("location.href=\"http://%s:9191/buzzer/tone/%s/1000\"", robot_ipaddr[i], strconv.Itoa(i))
-			fmt.Fprintf(w, "<tr><td>%d</td><td>%s</td><td><button onclick='%s'>Beep</button></td></tr>", i, robot_ipaddr[i], buzzurl)
+			fmt.Fprintf(w, "<tr><td>%d</td><td>%s</td><td><button onclick='%s'>Beep</button></td><td>%s</td><td>%s</td><td>%d</td><td>%f</td></tr>", i, robot_ipaddr[i], buzzurl, adjustment[i].Min_Threshold, adjustment[i].Max_Threshold, adjustment[i].Ball_Detect_Radius, adjustment[i].Circularity_Threshold)
 		}
 		fmt.Fprintf(w, "</table>")
 		//Date and Time

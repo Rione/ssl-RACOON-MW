@@ -111,3 +111,12 @@ var flag_ball bool = false
 var is_ball_exit [16]bool
 var ball_camera_X [16]float32
 var ball_camera_Y [16]float32
+
+type Adjustment struct {
+	Min_Threshold         string  `json:"minThreshold"`
+	Max_Threshold         string  `json:"maxThreshold"`
+	Ball_Detect_Radius    int32   `json:"ballDetectRadius"`
+	Circularity_Threshold float32 `json:"circularityThreshold"`
+}
+
+var adjustment [16]Adjustment
