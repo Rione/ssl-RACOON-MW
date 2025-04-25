@@ -1,7 +1,9 @@
 package main
 
 import (
+	"encoding/base64"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"net/http"
@@ -13,7 +15,6 @@ import (
 )
 
 var cap_power [16]uint8
-var latestImage = make(chan []byte, 1)
 
 func Update(chupdate chan bool) {
 	serverAddr := &net.UDPAddr{
@@ -60,19 +61,23 @@ func RobotIPList(chrobotip chan bool) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		fmt.Fprintf(w, "<html><head><title>The RACOON Web Console</title>")
 		fmt.Fprintf(w, `<script>
-						function showImage(endpoint, id) {
-							fetch(endpoint)
+						function showImage(id) {
+							fetch("/image/" + id, { method: "GET" })
 								.then(response => {
 									if (!response.ok) {
 										throw new Error("Network Error: " + response.status);
 									}
 									return response.json();
-										})
+								})
 								.then(data => {
 									document.getElementById("image").src = "data:image/jpeg;base64," + data.image;
 								})
+								.catch(error => {
+									console.error("Error fetching image:", error);
+								});
 							document.getElementById("imagetitle").innerText = "Robot " + id + "'s Image";
-						}
+							}
+												}
 						</script>`)
 		fmt.Fprintf(w, "</head><body><h1>The RACOON Web Console</h1>")
 		fmt.Fprintf(w, "<table border=\"1\"><h2>Robot IP List</h2><tr><th>Robot ID</th><th>Associated IP Address</th><th>Beep</th><th>Image</th></tr>")
@@ -90,6 +95,44 @@ func RobotIPList(chrobotip chan bool) {
 		fmt.Fprintf(w, "<h2 id='imagetitle'>Robot Image</h2>")
 		fmt.Fprintf(w, "<img id='image' src='' width='320' alt='No Image Selected'/>")
 		fmt.Fprintf(w, "</body></html>")
+
+	})
+
+	http.HandleFunc("/image/", func(w http.ResponseWriter, r *http.Request) {
+		idStr := r.URL.Path[len("/image/"):]
+		id, err := strconv.Atoi(idStr)
+		if err != nil || id < 0 || id >= 16 {
+			http.Error(w, "Invalid robot ID", http.StatusBadRequest)
+			return
+		}
+
+		robotIP := robot_ipaddr[id]
+		if robotIP == "" {
+			http.Error(w, "Robot not found", http.StatusNotFound)
+			return
+		}
+
+		imageURL := fmt.Sprintf("http://%s:9191/image", robotIP)
+		resp, err := http.Get(imageURL)
+		if err != nil {
+			http.Error(w, "Failed to fetch image from robot", http.StatusInternalServerError)
+			return
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			http.Error(w, "Robot returned error", resp.StatusCode)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		bodyBytes, err := io.ReadAll(resp.Body)
+		if err != nil {
+			http.Error(w, "Failed to read image data", http.StatusInternalServerError)
+			return
+		}
+		w.Write([]byte(fmt.Sprintf(`{"image": "%s"}`, base64.StdEncoding.EncodeToString(bodyBytes))))
 	})
 
 	log.Fatal(http.ListenAndServe(":8080", nil))
