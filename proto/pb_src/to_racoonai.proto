@@ -20,12 +20,14 @@ message Robot_Infos {
   required float intercept = 12;
   required float angular_velocity = 13;
   required bool visible = 14;
-  optional bool ball_catch = 15;
-  optional bool online = 16;
-  optional float battery_voltage = 17;
-  optional uint32 cap_power = 18;
-  optional float ball_camera_x = 19;
-  optional float ball_camera_y = 20;
+  optional bool is_detect_photo_sensor = 15;
+  optional bool is_new_dribbler = 16;
+  optional bool is_detect_dribbler_sensor = 17;
+  optional bool online = 18;
+  optional float battery_voltage = 19;
+  optional uint32 cap_power = 20;
+  optional float ball_camera_x = 21;
+  optional float ball_camera_y = 22;
 }
 
 message Ball_Info {

@@ -23,7 +23,9 @@ var MAX_AVAILABLE_TIMEOUTS int = 5
 
 // グローバル宣言
 // 更新時のみ置き換えるようにする
-var balldetect [16]bool
+var is_detect_photo_sensor [16]bool
+var is_detect_dribbler_sensor [16]bool
+var is_new_dribbler [16]bool
 var visionwrapper [16]*pb_gen.SSL_WrapperPacket
 var visiondetection [16]*pb_gen.SSL_DetectionFrame
 
