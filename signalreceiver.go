@@ -1,7 +1,9 @@
 package main
 
 import (
+	"encoding/base64"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"net/http"
@@ -34,44 +36,111 @@ func Update(chupdate chan bool) {
 		n, addr, err := serverConn.ReadFromUDP(buf)
 		CheckError(err)
 
-		packet := &pb_gen.Robot_Status{}
+		packet := &pb_gen.PiToMw{}
 		err = proto.Unmarshal(buf[0:n], packet)
 		CheckError(err)
-		balldetect[packet.GetRobotId()] = packet.GetInfrared()
-		if robot_online_count[packet.GetRobotId()] < 5 {
-			robot_online_count[packet.GetRobotId()] += 1
+		balldetect[packet.RobotsStatus.GetRobotId()] = packet.RobotsStatus.GetInfrared()
+		if robot_online_count[packet.RobotsStatus.GetRobotId()] < 5 {
+			robot_online_count[packet.RobotsStatus.GetRobotId()] += 1
 		}
 		//Assign IP address to robot ID
-		if robot_ipaddr[packet.GetRobotId()] != addr.IP.String() {
-			robot_ipaddr[packet.GetRobotId()] = addr.IP.String()
-			log.Println("Robot ID", packet.GetRobotId(), " is associated with ", addr.IP.String())
+		if robot_ipaddr[packet.RobotsStatus.GetRobotId()] != addr.IP.String() {
+			robot_ipaddr[packet.RobotsStatus.GetRobotId()] = addr.IP.String()
+			log.Println("Robot ID", packet.RobotsStatus.GetRobotId(), " is associated with ", addr.IP.String())
 		}
 
-		battery_voltage[packet.GetRobotId()] = float32(packet.GetBatteryVoltage()) / 10
-		cap_power[packet.GetRobotId()] = uint8(packet.GetCapPower())
-
+		battery_voltage[packet.RobotsStatus.GetRobotId()] = float32(*packet.RobotsStatus.BatteryVoltage) / 10
+		cap_power[packet.RobotsStatus.GetRobotId()] = uint8(packet.RobotsStatus.GetCapPower())
+		is_ball_exit[packet.RobotsStatus.GetRobotId()] = packet.BallStatus.GetIsBallExit()
+		ball_camera_X[packet.RobotsStatus.GetRobotId()] = packet.BallStatus.GetBallCameraX()
+		ball_camera_Y[packet.RobotsStatus.GetRobotId()] = packet.BallStatus.GetBallCameraY()
+		adjustment[packet.RobotsStatus.GetRobotId()].Max_Threshold = packet.Ball.GetMaxThreshold()
+		adjustment[packet.RobotsStatus.GetRobotId()].Min_Threshold = packet.Ball.GetMinThreshold()
+		adjustment[packet.RobotsStatus.GetRobotId()].Ball_Detect_Radius = packet.Ball.GetBallDetectRadius()
+		adjustment[packet.RobotsStatus.GetRobotId()].Circularity_Threshold = packet.Ball.GetCircularityThreshold()
 	}
 }
 
 // Host a web server to display the robot IP addresses
 func RobotIPList(chrobotip chan bool) {
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		//Set the content type to HTML
-		fmt.Fprintf(w, "<h1>The RACOON Web Console</h1>")
-		fmt.Fprintf(w, "<html><head><title>The RACOON Web Console</title></head><body><table border=\"1\">")
-		fmt.Fprintf(w, "<h2>Robot IP List</h2><tr><th>Robot ID</th><th>Associated IP Address</th><th>Beep</th></tr>")
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		fmt.Fprintf(w, "<html><head><title>The RACOON Web Console</title>")
+		fmt.Fprintf(w, `<script>
+						function showImage(id) {
+							fetch("/image/" + id, { method: "GET" })
+								.then(response => {
+									if (!response.ok) {
+										throw new Error("Network Error: " + response.status);
+									}
+									return response.json();
+								})
+								.then(data => {
+									document.getElementById("image").src = "data:image/jpeg;base64," + data.image;
+								})
+								.catch(error => {
+									console.error("Error fetching image:", error);
+								});
+							document.getElementById("imagetitle").innerText = "Robot " + id + "'s Image";
+							}
+												}
+						</script>`)
+		fmt.Fprintf(w, "</head><body><h1>The RACOON Web Console</h1>")
+		fmt.Fprintf(w, "<table border=\"1\"><h2>Robot IP List</h2><tr><th>Robot ID</th><th>Associated IP Address</th><th>Beep</th><th>Image</th></tr>")
 		for i := 0; i < 16; i++ {
-			buzzurl := fmt.Sprintf("location.href=\"http://%s:9191/buzzer/tone/%s/1000\"", robot_ipaddr[i], strconv.Itoa(i))
-			fmt.Fprintf(w, "<tr><td>%d</td><td>%s</td><td><button onclick='%s'>Beep</button></td></tr>", i, robot_ipaddr[i], buzzurl)
+			buzzurl := fmt.Sprintf("http://%s:9191/buzzer/tone/%s/1000", robot_ipaddr[i], strconv.Itoa(i))
+			image := fmt.Sprintf("http://%s:9191/image", robot_ipaddr[i])
+			fmt.Fprintf(w,
+				"<tr><td>%d</td><td>%s</td><td><button onclick='location.href=\"%s\"'>Beep</button></td><td><button onclick='showImage(\"%s\", %d)'>Image</button></td></tr>",
+				i, robot_ipaddr[i], buzzurl, image, i)
 		}
 		fmt.Fprintf(w, "</table>")
-		//Date and Time
-		//Vision Status
 		fmt.Fprintf(w, "<h2>Vision Status: %t</h2>", isvisionrecv)
-		fmt.Fprintf(w, "<p>Generated at %s</p>", time.Now())
+		fmt.Fprintf(w, "<p>Generated at %s</p>", time.Now().Format(time.RFC1123))
+
+		fmt.Fprintf(w, "<h2 id='imagetitle'>Robot Image</h2>")
+		fmt.Fprintf(w, "<img id='image' src='' width='320' alt='No Image Selected'/>")
 		fmt.Fprintf(w, "</body></html>")
 
 	})
+
+	http.HandleFunc("/image/", func(w http.ResponseWriter, r *http.Request) {
+		idStr := r.URL.Path[len("/image/"):]
+		id, err := strconv.Atoi(idStr)
+		if err != nil || id < 0 || id >= 16 {
+			http.Error(w, "Invalid robot ID", http.StatusBadRequest)
+			return
+		}
+
+		robotIP := robot_ipaddr[id]
+		if robotIP == "" {
+			http.Error(w, "Robot not found", http.StatusNotFound)
+			return
+		}
+
+		imageURL := fmt.Sprintf("http://%s:9191/image", robotIP)
+		resp, err := http.Get(imageURL)
+		if err != nil {
+			http.Error(w, "Failed to fetch image from robot", http.StatusInternalServerError)
+			return
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			http.Error(w, "Robot returned error", resp.StatusCode)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		bodyBytes, err := io.ReadAll(resp.Body)
+		if err != nil {
+			http.Error(w, "Failed to read image data", http.StatusInternalServerError)
+			return
+		}
+		w.Write([]byte(fmt.Sprintf(`{"image": "%s"}`, base64.StdEncoding.EncodeToString(bodyBytes))))
+	})
+
 	log.Fatal(http.ListenAndServe(":8080", nil))
 
 	<-chrobotip

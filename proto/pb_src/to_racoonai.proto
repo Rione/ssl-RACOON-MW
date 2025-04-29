@@ -24,6 +24,8 @@ message Robot_Infos {
   optional bool online = 16;
   optional float battery_voltage = 17;
   optional uint32 cap_power = 18;
+  optional float ball_camera_x = 19;
+  optional float ball_camera_y = 20;
 }
 
 message Ball_Info {
@@ -39,6 +41,7 @@ message Ball_Info {
   required float speed = 10;
   required float slope = 11;
   required bool is_visible = 12;
+  required bool is_ball_exit = 13;
 }
 
 message Geometry_Info {
