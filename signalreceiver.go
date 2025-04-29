@@ -1,7 +1,9 @@
 package main
 
 import (
+	"encoding/base64"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"net/http"
@@ -62,22 +64,83 @@ func Update(chupdate chan bool) {
 // Host a web server to display the robot IP addresses
 func RobotIPList(chrobotip chan bool) {
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		//Set the content type to HTML
-		fmt.Fprintf(w, "<h1>The RACOON Web Console</h1>")
-		fmt.Fprintf(w, "<html><head><title>The RACOON Web Console</title></head><body><table border=\"1\">")
-		fmt.Fprintf(w, "<tr><th>Robot ID</th><th>Associated IP Address</th><th>Beep</th><th>Min Threshold</th><th>Max Threshold</th><th>Radius</th><th>Circularity</th></tr>")
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		fmt.Fprintf(w, "<html><head><title>The RACOON Web Console</title>")
+		fmt.Fprintf(w, `<script>
+						function showImage(id) {
+							fetch("/image/" + id, { method: "GET" })
+								.then(response => {
+									if (!response.ok) {
+										throw new Error("Network Error: " + response.status);
+									}
+									return response.json();
+								})
+								.then(data => {
+									document.getElementById("image").src = "data:image/jpeg;base64," + data.image;
+								})
+								.catch(error => {
+									console.error("Error fetching image:", error);
+								});
+							document.getElementById("imagetitle").innerText = "Robot " + id + "'s Image";
+							}
+												}
+						</script>`)
+		fmt.Fprintf(w, "</head><body><h1>The RACOON Web Console</h1>")
+		fmt.Fprintf(w, "<table border=\"1\"><h2>Robot IP List</h2><tr><th>Robot ID</th><th>Associated IP Address</th><th>Beep</th><th>Image</th></tr>")
 		for i := 0; i < 16; i++ {
-			buzzurl := fmt.Sprintf("location.href=\"http://%s:9191/buzzer/tone/%s/1000\"", robot_ipaddr[i], strconv.Itoa(i))
-			fmt.Fprintf(w, "<tr><td>%d</td><td>%s</td><td><button onclick='%s'>Beep</button></td><td>%s</td><td>%s</td><td>%d</td><td>%f</td></tr>", i, robot_ipaddr[i], buzzurl, adjustment[i].Min_Threshold, adjustment[i].Max_Threshold, adjustment[i].Ball_Detect_Radius, adjustment[i].Circularity_Threshold)
+			buzzurl := fmt.Sprintf("http://%s:9191/buzzer/tone/%s/1000", robot_ipaddr[i], strconv.Itoa(i))
+			image := fmt.Sprintf("http://%s:9191/image", robot_ipaddr[i])
+			fmt.Fprintf(w,
+				"<tr><td>%d</td><td>%s</td><td><button onclick='location.href=\"%s\"'>Beep</button></td><td><button onclick='showImage(\"%s\", %d)'>Image</button></td></tr>",
+				i, robot_ipaddr[i], buzzurl, image, i)
 		}
 		fmt.Fprintf(w, "</table>")
-		//Date and Time
-		//Vision Status
 		fmt.Fprintf(w, "<h2>Vision Status: %t</h2>", isvisionrecv)
-		fmt.Fprintf(w, "<p>Generated at %s</p>", time.Now())
+		fmt.Fprintf(w, "<p>Generated at %s</p>", time.Now().Format(time.RFC1123))
+
+		fmt.Fprintf(w, "<h2 id='imagetitle'>Robot Image</h2>")
+		fmt.Fprintf(w, "<img id='image' src='' width='320' alt='No Image Selected'/>")
 		fmt.Fprintf(w, "</body></html>")
 
 	})
+
+	http.HandleFunc("/image/", func(w http.ResponseWriter, r *http.Request) {
+		idStr := r.URL.Path[len("/image/"):]
+		id, err := strconv.Atoi(idStr)
+		if err != nil || id < 0 || id >= 16 {
+			http.Error(w, "Invalid robot ID", http.StatusBadRequest)
+			return
+		}
+
+		robotIP := robot_ipaddr[id]
+		if robotIP == "" {
+			http.Error(w, "Robot not found", http.StatusNotFound)
+			return
+		}
+
+		imageURL := fmt.Sprintf("http://%s:9191/image", robotIP)
+		resp, err := http.Get(imageURL)
+		if err != nil {
+			http.Error(w, "Failed to fetch image from robot", http.StatusInternalServerError)
+			return
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			http.Error(w, "Robot returned error", resp.StatusCode)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		bodyBytes, err := io.ReadAll(resp.Body)
+		if err != nil {
+			http.Error(w, "Failed to read image data", http.StatusInternalServerError)
+			return
+		}
+		w.Write([]byte(fmt.Sprintf(`{"image": "%s"}`, base64.StdEncoding.EncodeToString(bodyBytes))))
+	})
+
 	log.Fatal(http.ListenAndServe(":8080", nil))
 
 	<-chrobotip

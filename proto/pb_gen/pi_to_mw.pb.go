@@ -224,6 +224,7 @@ type Ball struct {
 
 	MinThreshold         *string  `protobuf:"bytes,1,req,name=min_threshold,json=minThreshold" json:"min_threshold,omitempty"`
 	MaxThreshold         *string  `protobuf:"bytes,2,req,name=max_threshold,json=maxThreshold" json:"max_threshold,omitempty"`
+
 	BallDetectRadius     *int32   `protobuf:"varint,3,req,name=ball_detect_radius,json=ballDetectRadius" json:"ball_detect_radius,omitempty"`
 	CircularityThreshold *float32 `protobuf:"fixed32,4,req,name=circularity_threshold,json=circularityThreshold" json:"circularity_threshold,omitempty"`
 }
