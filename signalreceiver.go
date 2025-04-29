@@ -39,7 +39,10 @@ func Update(chupdate chan bool) {
 		packet := &pb_gen.PiToMw{}
 		err = proto.Unmarshal(buf[0:n], packet)
 		CheckError(err)
-		balldetect[packet.RobotsStatus.GetRobotId()] = packet.RobotsStatus.GetInfrared()
+		is_detect_photo_sensor[packet.RobotsStatus.GetRobotId()] = packet.RobotsStatus.GetIsDetectPhotoSensor()
+		is_detect_dribbler_sensor[packet.RobotsStatus.GetRobotId()] = packet.RobotsStatus.GetIsDetectDribblerSensor()
+		is_new_dribbler[packet.RobotsStatus.GetRobotId()] = packet.RobotsStatus.GetIsNewDribbler()
+
 		if robot_online_count[packet.RobotsStatus.GetRobotId()] < 5 {
 			robot_online_count[packet.RobotsStatus.GetRobotId()] += 1
 		}
