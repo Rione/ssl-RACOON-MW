@@ -56,6 +56,7 @@ func createRobotInfo(i int, ourteam int, simmode bool) *pb_gen.Robot_Infos {
 		CapPower:               &cap_power,
 		BallCameraX:            &ball_camera_X[i],
 		BallCameraY:            &ball_camera_Y[i],
+		IsBallExistOnCamera:    &is_ball_exit[i],
 	}
 	return pe
 }

@@ -28,6 +28,7 @@ message Robot_Infos {
   optional uint32 cap_power = 20;
   optional float ball_camera_x = 21;
   optional float ball_camera_y = 22;
+  optional bool is_ball_exist_on_camera = 23;
 }
 
 message Ball_Info {
@@ -43,7 +44,6 @@ message Ball_Info {
   required float speed = 10;
   required float slope = 11;
   required bool is_visible = 12;
-  required bool is_ball_exit = 13;
 }
 
 message Geometry_Info {
