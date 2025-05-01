@@ -888,12 +888,12 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 				for i := 0; i < 16; i++ {
 					if distance_ball_robot[i]/1000 < 0.115 && radian_ball_robot[i]*180/math.Pi < 20 && radian_ball_robot[i]*180/math.Pi > -20 {
 						is_detect_photo_sensor[i] = true
-						is_detect_photo_sensor[i] = true
+						is_detect_dribbler_sensor[i] = true
 						is_new_dribbler[i] = true
 
 					} else {
 						is_detect_photo_sensor[i] = false
-						is_detect_photo_sensor[i] = false
+						is_detect_dribbler_sensor[i] = false
 						is_new_dribbler[i] = false
 					}
 				}
