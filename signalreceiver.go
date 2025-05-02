@@ -88,22 +88,32 @@ func RobotIPList(chrobotip chan bool) {
 							document.getElementById("imagetitle").innerText = "Robot " + id + "'s Image";
 							}
 						</script>`)
-		fmt.Fprintf(w, "</head><body><h1>The RACOON Web Console</h1>")
-		fmt.Fprintf(w, "<table border=\"1\"><h2>Robot IP List</h2><tr><th>Robot ID</th><th>Associated IP Address</th><th>Beep</th><th>Image</th></tr>")
+		fmt.Fprintf(w, "<body><h1>The RACOON Web Console</h1>")
+
+		fmt.Fprintf(w, `<div style="display: flex; align-items: flex-start;">`)
+
+		fmt.Fprintf(w, `<div style="margin-right: 40px;">`)
+		fmt.Fprintf(w, "<h2>Robot IP List</h2>")
+		fmt.Fprintf(w, "<table border='1'>")
+		fmt.Fprintf(w, "<tr><th>Robot ID</th><th>IP Address</th><th>Beep</th><th>Image</th></tr>")
+
 		for i := 0; i < 16; i++ {
 			buzzurl := fmt.Sprintf("http://%s:9191/buzzer/tone/%s/1000", robot_ipaddr[i], strconv.Itoa(i))
-			image := i
 			fmt.Fprintf(w,
 				"<tr><td>%d</td><td>%s</td><td><button onclick='location.href=\"%s\"'>Beep</button></td><td><button onclick='showImage(%d)'>Image</button></td></tr>",
-				i, robot_ipaddr[i], buzzurl, image)
+				i, robot_ipaddr[i], buzzurl, i)
 		}
 		fmt.Fprintf(w, "</table>")
 		fmt.Fprintf(w, "<h2>Vision Status: %t</h2>", isvisionrecv)
 		fmt.Fprintf(w, "<p>Generated at %s</p>", time.Now().Format(time.RFC1123))
+		fmt.Fprintf(w, "</div>")
 
+		fmt.Fprintf(w, `<div>`)
 		fmt.Fprintf(w, "<h2 id='imagetitle'>Robot Image</h2>")
 		fmt.Fprintf(w, "<img id='image' src='' width='320' alt='No Image Selected'/>")
-		fmt.Fprintf(w, "</body></html>")
+		fmt.Fprintf(w, "</div>")
+
+		fmt.Fprintf(w, "</div>")
 
 	})
 
