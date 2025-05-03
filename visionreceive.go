@@ -1194,6 +1194,10 @@ func TrackerReceive(chvision chan bool, port int, ourteam int, goalpos int, simm
 				ball_slope_degree = 0.0
 				ball_intercept = 0.0
 			}
+
+			ball_difference_X = ball_tracked.Vel.GetX()
+			ball_difference_Y = ball_tracked.Vel.GetY()
+
 		}
 
 		// Calculate Robot Speed
