@@ -1037,7 +1037,7 @@ func TrackerReceive(chvision chan bool, port int, ourteam int, goalpos int, simm
 
 		err = proto.Unmarshal(buf[0:n], packet)
 		CheckError(err)
-		if pre_packet != nil && packet.TrackedFrame.GetFrameNumber() == pre_packet.TrackedFrame.GetFrameNumber() {
+		if pre_packet != nil && packet.TrackedFrame.GetTimestamp()-pre_packet.TrackedFrame.GetTimestamp() == 0 {
 			continue
 		}
 
