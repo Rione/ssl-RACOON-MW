@@ -61,6 +61,61 @@ func createRobotInfo(i int, ourteam int, simmode bool) *pb_gen.Robot_Infos {
 	return pe
 }
 
+func createRobotInfoTracked(i int, ourteam int, simmode bool) *pb_gen.Robot_Infos {
+	var robotid uint32
+	var x float32
+	var y float32
+	var theta float32
+	if ourteam == 0 {
+		robotid = bluerobots_tracked[i].GetRobotId().GetId()
+		x = bluerobots_tracked[i].Pos.GetX()
+		y = bluerobots_tracked[i].Pos.GetY()
+		theta = bluerobots_tracked[i].GetOrientation()
+	} else {
+		robotid = yellowrobots_tracked[i].GetRobotId().GetId()
+		x = yellowrobots_tracked[i].Pos.GetX()
+		y = yellowrobots_tracked[i].Pos.GetY()
+		theta = yellowrobots_tracked[i].GetOrientation()
+	}
+	var diffx float32 = robot_difference_X[i]
+	var diffy float32 = robot_difference_Y[i]
+	var difftheta float32 = robot_difference_Theta[i]
+
+	var batt float32 = battery_voltage[i]
+	var online bool = robot_online[i]
+	if simmode {
+		batt = 16.5
+		online = true
+	}
+	var cap_power uint32 = uint32(cap_power[i])
+	pe := &pb_gen.Robot_Infos{
+		RobotId:                &robotid,
+		X:                      &x,
+		Y:                      &y,
+		Theta:                  &theta,
+		DiffX:                  &diffx,
+		DiffY:                  &diffy,
+		DiffTheta:              &difftheta,
+		DistanceBallRobot:      &distance_ball_robot[i],
+		RadianBallRobot:        &radian_ball_robot[i],
+		Speed:                  &robot_speed[i],
+		Slope:                  &robot_slope[i],
+		Intercept:              &robot_intercept[i],
+		AngularVelocity:        &robot_angular_velocity[i],
+		IsDetectPhotoSensor:    &is_detect_photo_sensor[i],
+		IsDetectDribblerSensor: &is_detect_dribbler_sensor[i],
+		IsNewDribbler:          &is_new_dribbler[i],
+		Online:                 &online,
+		Visible:                &ourrobot_is_visible[i],
+		BatteryVoltage:         &batt,
+		CapPower:               &cap_power,
+		BallCameraX:            &ball_camera_X[i],
+		BallCameraY:            &ball_camera_Y[i],
+		IsBallExistOnCamera:    &is_ball_exit[i],
+	}
+	return pe
+}
+
 func addRobotInfoToRobotInfos(robotinfo [16]*pb_gen.Robot_Infos) []*pb_gen.Robot_Infos {
 	RobotInfos := []*pb_gen.Robot_Infos{}
 
@@ -86,6 +141,46 @@ func createEnemyInfo(i int, ourteam int) *pb_gen.Robot_Infos {
 		x = filtered_enemy_x[i]
 		y = filtered_enemy_y[i]
 		theta = filtered_enemy_theta[i]
+
+		pe := &pb_gen.Robot_Infos{
+			RobotId:         &robotid,
+			X:               &x,
+			Y:               &y,
+			DiffX:           &diffx,
+			DiffY:           &diffy,
+			DiffTheta:       &difftheta,
+			Theta:           &theta,
+			Speed:           &enemy_speed[i],
+			Slope:           &enemy_slope[i],
+			Intercept:       &enemy_intercept[i],
+			AngularVelocity: &enemy_angular_velocity[i],
+			Visible:         &enemyrobot_is_visible[i],
+		}
+		return pe
+	} else {
+		return nil
+	}
+}
+
+func createEnemyInfoTracked(i int, ourteam int) *pb_gen.Robot_Infos {
+	if enemyrobot_is_visible[i] {
+		var robotid uint32 = uint32(i)
+		var x float32
+		var y float32
+		var theta float32
+		var diffx float32 = enemy_difference_X[i]
+		var diffy float32 = enemy_difference_Y[i]
+		var difftheta float32 = enemy_difference_Theta[i]
+
+		if ourteam == 0 {
+			x = yellowrobots_tracked[i].Pos.GetX()
+			y = yellowrobots_tracked[i].Pos.GetY()
+			theta = yellowrobots_tracked[i].GetOrientation()
+		} else {
+			x = bluerobots_tracked[i].Pos.GetX()
+			y = bluerobots_tracked[i].Pos.GetY()
+			theta = bluerobots_tracked[i].GetOrientation()
+		}
 
 		pe := &pb_gen.Robot_Infos{
 			RobotId:         &robotid,

@@ -37,8 +37,12 @@ var left_geo_goal_y float32
 var bluerobots [16]*pb_gen.SSL_DetectionRobot
 var yellowrobots [16]*pb_gen.SSL_DetectionRobot
 
+var bluerobots_tracked [16]*pb_gen.TrackedRobot
+var yellowrobots_tracked [16]*pb_gen.TrackedRobot
+
 var ref_command *pb_gen.Referee
 var ball *pb_gen.SSL_DetectionBall
+var ball_tracked *pb_gen.TrackedBall
 
 var maxcameras int
 

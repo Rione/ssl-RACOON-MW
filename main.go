@@ -108,7 +108,7 @@ func CheckVisionRobot(chvisrobot chan bool) {
 	}
 }
 
-func RunServer(chserver chan bool, reportrate uint, ourteam int, goalpose int, debug bool, simmode bool, ignore_ref_mismatch bool, match_mode bool, grsim_send_port int, goal_keeper uint, halfswitch int, teamname string) {
+func RunServer(chserver chan bool, reportrate uint, ourteam int, goalpose int, debug bool, simmode bool, ignore_ref_mismatch bool, match_mode bool, grsim_send_port int, goal_keeper uint, halfswitch int, teamname string, tracker bool) {
 	ipv4 := NW_AI_IPADDR
 	port := NW_AI_PORT
 	port_controller := NW_AI_PORT_CONTROLLER
@@ -152,19 +152,45 @@ func RunServer(chserver chan bool, reportrate uint, ourteam int, goalpose int, d
 		var enemy_infos [16]*pb_gen.Robot_Infos
 		var robotip_infos [16]*pb_gen.RobotIP_Infos
 
-		if ourteam == 0 {
-			for _, robot := range bluerobots {
-				robot_infos[robot.GetRobotId()] = createRobotInfo(int(robot.GetRobotId()), ourteam, simmode)
-			}
-			for _, enemy := range yellowrobots {
-				enemy_infos[enemy.GetRobotId()] = createEnemyInfo(int(enemy.GetRobotId()), ourteam)
+		if tracker {
+			if ourteam == 0 {
+				for _, robot := range bluerobots_tracked {
+					if robot != nil {
+						robot_infos[robot.RobotId.GetId()] = createRobotInfoTracked(int(robot.RobotId.GetId()), ourteam, simmode)
+					}
+				}
+				for _, enemy := range yellowrobots_tracked {
+					if enemy != nil {
+						enemy_infos[enemy.RobotId.GetId()] = createEnemyInfoTracked(int(enemy.RobotId.GetId()), ourteam)
+					}
+				}
+			} else {
+				for _, robot := range yellowrobots_tracked {
+					if robot != nil {
+						robot_infos[robot.RobotId.GetId()] = createRobotInfoTracked(int(robot.RobotId.GetId()), ourteam, simmode)
+					}
+				}
+				for _, enemy := range bluerobots_tracked {
+					if enemy != nil {
+						enemy_infos[enemy.RobotId.GetId()] = createEnemyInfoTracked(int(enemy.RobotId.GetId()), ourteam)
+					}
+				}
 			}
 		} else {
-			for _, robot := range yellowrobots {
-				robot_infos[robot.GetRobotId()] = createRobotInfo(int(robot.GetRobotId()), ourteam, simmode)
-			}
-			for _, enemy := range bluerobots {
-				enemy_infos[enemy.GetRobotId()] = createEnemyInfo(int(enemy.GetRobotId()), ourteam)
+			if ourteam == 0 {
+				for _, robot := range bluerobots {
+					robot_infos[robot.GetRobotId()] = createRobotInfo(int(robot.GetRobotId()), ourteam, simmode)
+				}
+				for _, enemy := range yellowrobots {
+					enemy_infos[enemy.GetRobotId()] = createEnemyInfo(int(enemy.GetRobotId()), ourteam)
+				}
+			} else {
+				for _, robot := range yellowrobots {
+					robot_infos[robot.GetRobotId()] = createRobotInfo(int(robot.GetRobotId()), ourteam, simmode)
+				}
+				for _, enemy := range bluerobots {
+					enemy_infos[enemy.GetRobotId()] = createEnemyInfo(int(enemy.GetRobotId()), ourteam)
+				}
 			}
 		}
 
@@ -247,6 +273,7 @@ func main() {
 		process_variance     = flag.Float64("pv", 0.1, "Process Variance for Ball Kalman Filter(Default 0.1)")
 		observation_variance = flag.Float64("ov", 0.18, "Observation Variance for Ball Kalman Filter(Default 0.18)")
 		teamname             = flag.String("tn", "Ri-one", "Team Name (Default Ri-one)")
+		tracker              = flag.Bool("tracker", false, "Tracker Mode")
 	)
 	//OUR TEAM 0 = blue
 	//OUR TEAM 1 = yellow
@@ -322,8 +349,12 @@ func main() {
 	chrobotip := make(chan bool)
 
 	go Update(chupdate)
-	go RunServer(chserver, *reportrate, ourteam_n, goalpos_n, *debug, *simmode, *ignore_ref_mismatch, *match_mode, *grsim_send_port, *goal_keeper, halfswitch_n, *teamname)
-	go VisionReceive(chvision, *visionport, ourteam_n, goalpos_n, *simmode, *replay, halfswitch_n, *match_mode, *initial_variance, *process_variance, *observation_variance)
+	go RunServer(chserver, *reportrate, ourteam_n, goalpos_n, *debug, *simmode, *ignore_ref_mismatch, *match_mode, *grsim_send_port, *goal_keeper, halfswitch_n, *teamname, *tracker)
+	if *tracker {
+		go TrackerReceive(chvision, *visionport, ourteam_n, goalpos_n, *simmode, *replay, halfswitch_n, *match_mode, *initial_variance, *process_variance, *observation_variance)
+	} else {
+		go VisionReceive(chvision, *visionport, ourteam_n, goalpos_n, *simmode, *replay, halfswitch_n, *match_mode, *initial_variance, *process_variance, *observation_variance)
+	}
 	go CheckVisionRobot(chvisrobot)
 	go FPSCounter(chfps, ourteam_n)
 	go RefereeClient(chref, *gcport)
