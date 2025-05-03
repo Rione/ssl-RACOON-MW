@@ -276,6 +276,7 @@ func main() {
 		observation_variance = flag.Float64("ov", 0.18, "Observation Variance for Ball Kalman Filter(Default 0.18)")
 		teamname             = flag.String("tn", "Ri-one", "Team Name (Default Ri-one)")
 		tracker              = flag.Bool("tracker", false, "Tracker Mode")
+		port_tracker         = flag.Int("tp", 10010, "Tracker Port Number")
 	)
 	//OUR TEAM 0 = blue
 	//OUR TEAM 1 = yellow
@@ -305,6 +306,7 @@ func main() {
 		*ignore_ref_mismatch = false
 		*simmode = false
 		*halfswitch = "F"
+		*port_tracker = 10010
 	}
 
 	var halfswitch_n int
@@ -353,7 +355,7 @@ func main() {
 	go Update(chupdate)
 	go RunServer(chserver, *reportrate, ourteam_n, goalpos_n, *debug, *simmode, *ignore_ref_mismatch, *match_mode, *grsim_send_port, *goal_keeper, halfswitch_n, *teamname, *tracker)
 	if *tracker {
-		go TrackerReceive(chvision, *visionport, ourteam_n, goalpos_n, *simmode, *replay, halfswitch_n, *match_mode, *initial_variance, *process_variance, *observation_variance)
+		go TrackerReceive(chvision, *visionport, ourteam_n, goalpos_n, *simmode, *replay, halfswitch_n, *match_mode, *initial_variance, *process_variance, *observation_variance, *port_tracker)
 	} else {
 		go VisionReceive(chvision, *visionport, ourteam_n, goalpos_n, *simmode, *replay, halfswitch_n, *match_mode, *initial_variance, *process_variance, *observation_variance)
 	}
