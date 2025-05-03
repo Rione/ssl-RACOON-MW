@@ -230,6 +230,41 @@ func createBallInfo() *pb_gen.Ball_Info {
 	}
 	return pe
 }
+func createBallInfoTracked() *pb_gen.Ball_Info {
+	var x, y, z float32
+	if ball_tracked != nil {
+		x = ball_tracked.Pos.GetX() * 1000
+		y = ball_tracked.Pos.GetY() * 1000
+		z = ball_tracked.Pos.GetX() * 1000
+	} else {
+		x = 0
+		y = 0
+		z = 0
+	}
+
+	var sloperadian float32 = ball_slope_degree
+	var slope float32 = ball_slope
+	var intercept float32 = ball_intercept
+	var speed float32 = ball_speed
+	var diffx float32 = ball_difference_X
+	var diffy float32 = ball_difference_Y
+
+	pe := &pb_gen.Ball_Info{
+		FilteredX:   &x,
+		FilteredY:   &y,
+		X:           &x,
+		Y:           &y,
+		Z:           &z,
+		DiffX:       &diffx,
+		DiffY:       &diffy,
+		SlopeRadian: &sloperadian,
+		Intercept:   &intercept,
+		Speed:       &speed,
+		Slope:       &slope,
+		IsVisible:   &flag_ball,
+	}
+	return pe
+}
 
 func createGeometryInfo() *pb_gen.Geometry_Info {
 	var x float32 = left_geo_goal_x

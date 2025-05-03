@@ -152,6 +152,8 @@ func RunServer(chserver chan bool, reportrate uint, ourteam int, goalpose int, d
 		var enemy_infos [16]*pb_gen.Robot_Infos
 		var robotip_infos [16]*pb_gen.RobotIP_Infos
 
+		var BallInfo *pb_gen.Ball_Info
+
 		if tracker {
 			if ourteam == 0 {
 				for _, robot := range bluerobots_tracked {
@@ -176,6 +178,7 @@ func RunServer(chserver chan bool, reportrate uint, ourteam int, goalpose int, d
 					}
 				}
 			}
+			BallInfo = createBallInfoTracked()
 		} else {
 			if ourteam == 0 {
 				for _, robot := range bluerobots {
@@ -192,6 +195,7 @@ func RunServer(chserver chan bool, reportrate uint, ourteam int, goalpose int, d
 					enemy_infos[enemy.GetRobotId()] = createEnemyInfo(int(enemy.GetRobotId()), ourteam)
 				}
 			}
+			BallInfo = createBallInfo()
 		}
 
 		//Robot IP
@@ -209,8 +213,6 @@ func RunServer(chserver chan bool, reportrate uint, ourteam int, goalpose int, d
 		RobotInfos := addRobotInfoToRobotInfos(robot_infos)
 
 		EnemyInfos := addEnemyInfoToEnemyInfos(enemy_infos)
-
-		BallInfo := createBallInfo()
 
 		RobotIpInfo := addRobotIPInfoToRobotIPInfos(robotip_infos)
 
