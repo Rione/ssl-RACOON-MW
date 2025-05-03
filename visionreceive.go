@@ -235,6 +235,15 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 
 		var is_ball_exists bool = false
 		flag_ball = false
+		var robot_blue_conf [16]float32
+		var robot_yellow_conf [16]float32
+
+		// -1 fill
+		for i := 0; i < 16; i++ {
+			robot_blue_conf[i] = -1.0
+			robot_yellow_conf[i] = -1.0
+		}
+
 		// var get_ball bool = false
 		for i := 0; i < maxcameras; i++ {
 			var n int
@@ -295,17 +304,23 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 			for _, robot := range packet.Detection.GetRobotsBlue() {
 				switch halfswitch_n {
 				case 0:
-					bluerobots[robot.GetRobotId()] = robot
-					visible_in_vision_b[robot.GetRobotId()] = true
+
+					if robot.GetConfidence() > robot_blue_conf[robot.GetRobotId()] {
+						robot_blue_conf[robot.GetRobotId()] = robot.GetConfidence()
+						bluerobots[robot.GetRobotId()] = robot
+						visible_in_vision_b[robot.GetRobotId()] = true
+					}
 
 				case 1:
-					if robot.GetX() > 0 {
+					if robot.GetX() > 0 && robot.GetConfidence() > robot_blue_conf[robot.GetRobotId()] {
+						robot_blue_conf[robot.GetRobotId()] = robot.GetConfidence()
 						bluerobots[robot.GetRobotId()] = robot
 						visible_in_vision_b[robot.GetRobotId()] = true
 					}
 
 				case -1:
-					if robot.GetX() <= 0 {
+					if robot.GetX() <= 0 && robot.GetConfidence() > robot_blue_conf[robot.GetRobotId()] {
+						robot_blue_conf[robot.GetRobotId()] = robot.GetConfidence()
 						bluerobots[robot.GetRobotId()] = robot
 						visible_in_vision_b[robot.GetRobotId()] = true
 					}
@@ -316,17 +331,20 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 			for _, robot := range packet.Detection.GetRobotsYellow() {
 				switch halfswitch_n {
 				case 0:
-					yellowrobots[robot.GetRobotId()] = robot
-					visible_in_vision_y[robot.GetRobotId()] = true
-
-				case 1:
-					if robot.GetX() > 0 {
+					if robot.GetConfidence() > robot_yellow_conf[robot.GetRobotId()] {
+						robot_yellow_conf[robot.GetRobotId()] = robot.GetConfidence()
 						yellowrobots[robot.GetRobotId()] = robot
 						visible_in_vision_y[robot.GetRobotId()] = true
 					}
-
+				case 1:
+					if robot.GetX() > 0 && robot.GetConfidence() > robot_yellow_conf[robot.GetRobotId()] {
+						robot_yellow_conf[robot.GetRobotId()] = robot.GetConfidence()
+						yellowrobots[robot.GetRobotId()] = robot
+						visible_in_vision_y[robot.GetRobotId()] = true
+					}
 				case -1:
-					if robot.GetX() <= 0 {
+					if robot.GetX() <= 0 && robot.GetConfidence() > robot_yellow_conf[robot.GetRobotId()] {
+						robot_yellow_conf[robot.GetRobotId()] = robot.GetConfidence()
 						yellowrobots[robot.GetRobotId()] = robot
 						visible_in_vision_y[robot.GetRobotId()] = true
 					}
