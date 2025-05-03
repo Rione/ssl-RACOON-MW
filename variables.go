@@ -7,7 +7,8 @@ import (
 var BALL_MOVING_THRESHOULD_SPEED float32 = 1000
 
 var NW_ROBOT_UPDATE_INTERFACE_NAME string = "nil"
-var NW_VISION_REFEREE_INTERFACE_NAME string = "nil"
+var NW_VISION_INTERFACE_NAME string = "nil"
+var NW_REFEREE_INTERFACE_NAME string = "nil"
 
 var NW_AI_IPADDR string = "127.0.0.1"      //DEPRECATED
 var NW_AI_PORT string = "30011"            //DEPRECATED
