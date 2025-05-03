@@ -1144,11 +1144,19 @@ func TrackerReceive(chvision chan bool, port int, ourteam int, goalpos int, simm
 
 			// Get Ball
 			var visibility float32
+			var ball_exist bool = false
 			for _, ball := range packet.TrackedFrame.GetBalls() {
 				if ball.GetVisibility() > visibility {
 					ball_tracked = ball
+					ball_exist = true
 				}
 			}
+			if ball_exist {
+				flag_ball = true
+			} else {
+				flag_ball = false
+			}
+
 		}
 		var ourrobots [16]*pb_gen.TrackedRobot
 		var enemyrobots [16]*pb_gen.TrackedRobot
@@ -1180,11 +1188,9 @@ func TrackerReceive(chvision chan bool, port int, ourteam int, goalpos int, simm
 				bdY64 := float64(ball_difference_Y)
 				ball_slope_degree = float32(math.Atan2(bdY64, bdX64))
 				ball_intercept = ball_tracked.Pos.GetY() - (ball_slope * ball_tracked.Pos.GetX())
-				ball_speed = float32(math.Sqrt(math.Pow(bdX64, 2)+math.Pow(bdY64, 2)) / float64(secperframe))
 			} else {
 				ball_slope_degree = 0.0
 				ball_intercept = 0.0
-				ball_speed = 0.0
 			}
 		}
 
