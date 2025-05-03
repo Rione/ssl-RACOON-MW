@@ -1196,23 +1196,20 @@ func TrackerReceive(chvision chan bool, port int, ourteam int, goalpos int, simm
 				robot_speed[i] = float32(math.Sqrt(float64(robot_speed_x*robot_speed_x + robot_speed_y*robot_speed_y)))
 
 				if pre_ourrobots[i] != nil {
-					robot_difference_X[i] = ourrobots[i].Pos.GetX() - pre_ourrobots[i].Pos.GetX()*1000
-					robot_difference_Y[i] = ourrobots[i].Pos.GetY() - pre_ourrobots[i].Pos.GetY()*1000
+					robot_difference_X[i] = (ourrobots[i].Pos.GetX() - pre_ourrobots[i].Pos.GetX()) * 1000
+					robot_difference_Y[i] = (ourrobots[i].Pos.GetY() - pre_ourrobots[i].Pos.GetY()) * 1000
 					robot_difference_Theta[i] = ourrobots[i].GetOrientation() - pre_ourrobots[i].GetOrientation()
 				} else {
 					robot_difference_X[i] = 0
 					robot_difference_Y[i] = 0
 					robot_difference_Theta[i] = 0
 				}
-				robot_angular_velocity[i] = ourrobots[i].GetVelAngular()
 
-				rdX64 := float64(robot_difference_X[i])
-				rdY64 := float64(robot_difference_Y[i])
+				robot_angular_velocity[i] = ourrobots[i].GetVelAngular()
 
 				if robot_difference_Y[i] != 0 || robot_difference_X[i] != 0 {
 					robot_slope[i] = robot_difference_Y[i] / robot_difference_X[i]
 					robot_intercept[i] = ourrobots[i].Pos.GetY() - (robot_slope[i] * ourrobots[i].Pos.GetX())
-					robot_speed[i] = float32(math.Sqrt(math.Pow(rdX64, 2)+math.Pow(rdY64, 2)) / 0.016)
 				} else {
 					robot_slope[i] = 0.0
 					robot_intercept[i] = ourrobots[i].Pos.GetY()
@@ -1234,13 +1231,9 @@ func TrackerReceive(chvision chan bool, port int, ourteam int, goalpos int, simm
 				}
 				enemy_angular_velocity[i] = enemyrobots[i].GetVelAngular()
 
-				edX64 := float64(enemy_difference_X[i])
-				edY64 := float64(enemy_difference_Y[i])
-
 				if enemy_difference_Y[i] != 0 || enemy_difference_X[i] != 0 {
 					enemy_slope[i] = enemy_difference_Y[i] / enemy_difference_X[i]
 					enemy_intercept[i] = enemyrobots[i].Pos.GetY() - (enemy_slope[i] * enemyrobots[i].Pos.GetX())
-					enemy_speed[i] = float32(math.Sqrt(math.Pow(edX64, 2)+math.Pow(edY64, 2)) / 0.016)
 				} else {
 					enemy_slope[i] = 0.0
 					enemy_intercept[i] = enemyrobots[i].Pos.GetY()
