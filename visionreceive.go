@@ -923,7 +923,7 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 	chvision <- true
 }
 
-func TrackerReceive(chvision chan bool, port int, ourteam int, goalpos int, simmode bool, replay bool, halfswitch_n int, matchmode bool, initial_variance float64, process_variance float64, observation_variance float64) {
+func TrackerReceive(chvision chan bool, port int, ourteam int, goalpos int, simmode bool, replay bool, halfswitch_n int, matchmode bool, initial_variance float64, process_variance float64, observation_variance float64, port_tracker int) {
 
 	//get geometry
 
@@ -964,7 +964,7 @@ func TrackerReceive(chvision chan bool, port int, ourteam int, goalpos int, simm
 	framecounter = 0
 	serverAddr = &net.UDPAddr{
 		IP:   net.ParseIP("224.5.23.2"),
-		Port: 10010,
+		Port: port_tracker,
 	}
 
 	interfacename, _ = net.InterfaceByName(NW_VISION_INTERFACE_NAME)
@@ -973,7 +973,7 @@ func TrackerReceive(chvision chan bool, port int, ourteam int, goalpos int, simm
 		log.Println("[WARNING] MW Tracker Signal NW Interface Name is wrong! Trying system-default interface!")
 	}
 
-	log.Printf("Receiving Tracker Multicast at Port %d", 10010)
+	log.Printf("Receiving Tracker Multicast at Port %d", port_tracker)
 	serverConn, _ = net.ListenMulticastUDP("udp", interfacename, serverAddr)
 	defer serverConn.Close()
 
