@@ -237,7 +237,8 @@ func main() {
 		halfswitch           = flag.String("c", "F", "Where to use (N, P, F) F to Full. Disable when match mode is true")
 		ballmovethreshold    = flag.Float64("b", 1000, "Ball Detect Threshold (Default 1000")
 		nw_robot             = flag.String("rif", "none", "NW Robot Update Interface Name (ex. en0)")
-		nw_vision            = flag.String("vif", "none", "NW Vision and Referee receive Interface Name (ex. en1)")
+		nw_referee           = flag.String("refif", "none", "NW Referee Interface Name (ex. en0)")
+		nw_vision            = flag.String("vif", "none", "NW Vision (and Referee if refif is not defined) receive Interface Name (ex. en1)")
 		ignore_ref_mismatch  = flag.Bool("igref", false, "Ignore Referee Team Color & Attack Direction Mismatch Errors. Disable when match mode is true")
 		match_mode           = flag.Bool("m", false, "Match Mode (Disable Some Options! Most option get from GC)")
 		grsim_send_port      = flag.Int("grsimport", 20011, "grSim Command Listen Port Number")
@@ -290,8 +291,16 @@ func main() {
 		NW_ROBOT_UPDATE_INTERFACE_NAME = *nw_robot
 	}
 
+	if *nw_referee != "none" {
+		NW_REFEREE_INTERFACE_NAME = *nw_referee
+	}
+
+	if *nw_vision != "none" && *nw_referee == "none" {
+		NW_REFEREE_INTERFACE_NAME = *nw_vision
+	}
+
 	if *nw_vision != "none" {
-		NW_VISION_REFEREE_INTERFACE_NAME = *nw_vision
+		NW_VISION_INTERFACE_NAME = *nw_vision
 	}
 
 	if *ballmovethreshold != 1000 {

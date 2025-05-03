@@ -13,7 +13,7 @@ func RefereeClient(chref chan bool, gcport int) {
 		IP:   net.ParseIP("224.5.23.1"),
 		Port: gcport,
 	}
-	interfacename, _ := net.InterfaceByName(NW_VISION_REFEREE_INTERFACE_NAME)
+	interfacename, _ := net.InterfaceByName(NW_REFEREE_INTERFACE_NAME)
 
 	if interfacename == nil {
 		log.Println("[WARNING] MW Referee Signal NW Interface Name is wrong! Trying system-default interface!")

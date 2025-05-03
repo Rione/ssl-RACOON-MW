@@ -169,7 +169,7 @@ func VisionReceive(chvision chan bool, port int, ourteam int, goalpos int, simmo
 		Port: port,
 	}
 
-	interfacename, _ := net.InterfaceByName(NW_VISION_REFEREE_INTERFACE_NAME)
+	interfacename, _ := net.InterfaceByName(NW_VISION_INTERFACE_NAME)
 
 	if interfacename == nil {
 		log.Println("[WARNING] MW Vision Signal NW Interface Name is wrong! Trying system-default interface!")
