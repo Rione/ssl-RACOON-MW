@@ -998,6 +998,7 @@ func TrackerReceive(chvision chan bool, port int, ourteam int, goalpos int, simm
 	var pre_ourrobots [16]*pb_gen.TrackedRobot
 	var pre_enemyrobots [16]*pb_gen.TrackedRobot
 	var pre_ball *pb_gen.TrackedBall
+	var pre_packet *pb_gen.TrackerWrapperPacket
 
 	for {
 		var visible_in_vision_b [16]bool
@@ -1016,148 +1017,149 @@ func TrackerReceive(chvision chan bool, port int, ourteam int, goalpos int, simm
 		flag_ball = false
 
 		// var get_ball bool = false
-		for i := 0; i < maxcameras; i++ {
-			var n int
-			var err error
-			if replay {
-				line, _, err = reader.ReadLine()
-				CheckError(err)
-				str = string(line)
-				strarr = strings.Split(str, ",")
-
-				before_unix_time = unixtime
-				unixtime, _ = strconv.Atoi(strarr[0])
-				time.Sleep(time.Duration(unixtime-before_unix_time) * time.Millisecond)
-			} else {
-				n, _, err = serverConn.ReadFromUDP(buf)
-				CheckError(err)
-			}
-
-			packet := &pb_gen.TrackerWrapperPacket{}
-
-			err = proto.Unmarshal(buf[0:n], packet)
+		var n int
+		var err error
+		if replay {
+			line, _, err = reader.ReadLine()
 			CheckError(err)
+			str = string(line)
+			strarr = strings.Split(str, ",")
 
-			// log.Println(packet)
-
-			//log.Println(geometrydata)
-			var lgtlp1x, lgtlp1y, lgtlp2x float32
-			var lgblp2y float32
-			for _, line := range geometrydata.GetField().GetFieldLines() {
-				if line.GetName() == "LeftGoalTopLine" {
-					lgtlp1x = line.GetP1().GetX()
-					lgtlp1y = line.GetP1().GetY()
-				}
-				if line.GetName() == "LeftGoalBottomLine" {
-					lgblp2y = line.GetP2().GetY()
-					lgtlp2x = line.GetP1().GetX()
-				}
-			}
-			left_geo_goal_x = (lgtlp1x + lgtlp2x) * 0.5
-			left_geo_goal_y = (lgtlp1y + lgblp2y) * 0.5
-
-			centercircleradius = geometrydata.GetField().GetFieldArcs()[0].GetRadius()
-
-			//Invert
-			if goalpos == -1 {
-				left_geo_goal_x = left_geo_goal_x * -1
-			}
-
-			// Get Blue Robots
-			for _, robot := range packet.TrackedFrame.GetRobots() {
-				if robot.GetRobotId().GetTeam() == pb_gen.Team_BLUE {
-					switch halfswitch_n {
-					case 0:
-						bluerobots_tracked[int(robot.GetRobotId().GetId())] = robot
-						visible_in_vision_b[int(robot.GetRobotId().GetId())] = true
-
-					case 1:
-						if robot.GetPos().GetX() > 0 {
-							bluerobots_tracked[robot.GetRobotId().GetId()] = robot
-							visible_in_vision_b[robot.GetRobotId().GetId()] = true
-						}
-
-					case -1:
-						if robot.GetPos().GetX() <= 0 {
-							bluerobots_tracked[robot.GetRobotId().GetId()] = robot
-							visible_in_vision_b[robot.GetRobotId().GetId()] = true
-						}
-					}
-				} else {
-					switch halfswitch_n {
-					case 0:
-						yellowrobots_tracked[int(robot.GetRobotId().GetId())] = robot
-						visible_in_vision_y[int(robot.GetRobotId().GetId())] = true
-
-					case 1:
-						if robot.GetPos().GetX() > 0 {
-							yellowrobots_tracked[robot.GetRobotId().GetId()] = robot
-							visible_in_vision_y[robot.GetRobotId().GetId()] = true
-						}
-
-					case -1:
-						if robot.GetPos().GetX() <= 0 {
-							yellowrobots_tracked[robot.GetRobotId().GetId()] = robot
-							visible_in_vision_y[robot.GetRobotId().GetId()] = true
-						}
-					}
-				}
-			}
-
-			for i := 0; i < 16; i++ {
-				if !visible_in_vision_b[i] {
-					if ourteam == 0 {
-						if ourrobot_invisible_count[i] <= 15 {
-							ourrobot_invisible_count[i]++
-						}
-					} else {
-						if enemyrobot_invisible_count[i] <= 15 {
-							enemyrobot_invisible_count[i]++
-						}
-					}
-				} else {
-					if ourteam == 0 {
-						ourrobot_invisible_count[i] = 0
-					} else {
-						enemyrobot_invisible_count[i] = 0
-					}
-				}
-
-				if !visible_in_vision_y[i] {
-					if ourteam == 0 {
-						if enemyrobot_invisible_count[i] <= 15 {
-							enemyrobot_invisible_count[i]++
-						}
-					} else {
-						if ourrobot_invisible_count[i] <= 15 {
-							ourrobot_invisible_count[i]++
-						}
-					}
-				} else {
-					if ourteam == 0 {
-						enemyrobot_invisible_count[i] = 0
-					} else {
-						ourrobot_invisible_count[i] = 0
-					}
-				}
-			}
-
-			// Get Ball
-			var visibility float32
-			var ball_exist bool = false
-			for _, ball := range packet.TrackedFrame.GetBalls() {
-				if ball.GetVisibility() > visibility {
-					ball_tracked = ball
-					ball_exist = true
-				}
-			}
-			if ball_exist {
-				flag_ball = true
-			} else {
-				flag_ball = false
-			}
-
+			before_unix_time = unixtime
+			unixtime, _ = strconv.Atoi(strarr[0])
+			time.Sleep(time.Duration(unixtime-before_unix_time) * time.Millisecond)
+		} else {
+			n, _, err = serverConn.ReadFromUDP(buf)
+			CheckError(err)
 		}
+
+		packet := &pb_gen.TrackerWrapperPacket{}
+
+		err = proto.Unmarshal(buf[0:n], packet)
+		CheckError(err)
+		if pre_packet != nil && packet.TrackedFrame.GetFrameNumber() == pre_packet.TrackedFrame.GetFrameNumber() {
+			continue
+		}
+
+		pre_packet = packet
+
+		//log.Println(geometrydata)
+		var lgtlp1x, lgtlp1y, lgtlp2x float32
+		var lgblp2y float32
+		for _, line := range geometrydata.GetField().GetFieldLines() {
+			if line.GetName() == "LeftGoalTopLine" {
+				lgtlp1x = line.GetP1().GetX()
+				lgtlp1y = line.GetP1().GetY()
+			}
+			if line.GetName() == "LeftGoalBottomLine" {
+				lgblp2y = line.GetP2().GetY()
+				lgtlp2x = line.GetP1().GetX()
+			}
+		}
+		left_geo_goal_x = (lgtlp1x + lgtlp2x) * 0.5
+		left_geo_goal_y = (lgtlp1y + lgblp2y) * 0.5
+
+		centercircleradius = geometrydata.GetField().GetFieldArcs()[0].GetRadius()
+
+		//Invert
+		if goalpos == -1 {
+			left_geo_goal_x = left_geo_goal_x * -1
+		}
+
+		// Get Blue Robots
+		for _, robot := range packet.TrackedFrame.GetRobots() {
+			if robot.GetRobotId().GetTeam() == pb_gen.Team_BLUE {
+				switch halfswitch_n {
+				case 0:
+					bluerobots_tracked[int(robot.GetRobotId().GetId())] = robot
+					visible_in_vision_b[int(robot.GetRobotId().GetId())] = true
+
+				case 1:
+					if robot.GetPos().GetX() > 0 {
+						bluerobots_tracked[robot.GetRobotId().GetId()] = robot
+						visible_in_vision_b[robot.GetRobotId().GetId()] = true
+					}
+
+				case -1:
+					if robot.GetPos().GetX() <= 0 {
+						bluerobots_tracked[robot.GetRobotId().GetId()] = robot
+						visible_in_vision_b[robot.GetRobotId().GetId()] = true
+					}
+				}
+			} else {
+				switch halfswitch_n {
+				case 0:
+					yellowrobots_tracked[int(robot.GetRobotId().GetId())] = robot
+					visible_in_vision_y[int(robot.GetRobotId().GetId())] = true
+
+				case 1:
+					if robot.GetPos().GetX() > 0 {
+						yellowrobots_tracked[robot.GetRobotId().GetId()] = robot
+						visible_in_vision_y[robot.GetRobotId().GetId()] = true
+					}
+
+				case -1:
+					if robot.GetPos().GetX() <= 0 {
+						yellowrobots_tracked[robot.GetRobotId().GetId()] = robot
+						visible_in_vision_y[robot.GetRobotId().GetId()] = true
+					}
+				}
+			}
+		}
+
+		for i := 0; i < 16; i++ {
+			if !visible_in_vision_b[i] {
+				if ourteam == 0 {
+					if ourrobot_invisible_count[i] <= 15 {
+						ourrobot_invisible_count[i]++
+					}
+				} else {
+					if enemyrobot_invisible_count[i] <= 15 {
+						enemyrobot_invisible_count[i]++
+					}
+				}
+			} else {
+				if ourteam == 0 {
+					ourrobot_invisible_count[i] = 0
+				} else {
+					enemyrobot_invisible_count[i] = 0
+				}
+			}
+
+			if !visible_in_vision_y[i] {
+				if ourteam == 0 {
+					if enemyrobot_invisible_count[i] <= 15 {
+						enemyrobot_invisible_count[i]++
+					}
+				} else {
+					if ourrobot_invisible_count[i] <= 15 {
+						ourrobot_invisible_count[i]++
+					}
+				}
+			} else {
+				if ourteam == 0 {
+					enemyrobot_invisible_count[i] = 0
+				} else {
+					ourrobot_invisible_count[i] = 0
+				}
+			}
+		}
+
+		// Get Ball
+		var visibility float32
+		var ball_exist bool = false
+		for _, ball := range packet.TrackedFrame.GetBalls() {
+			if ball.GetVisibility() > visibility {
+				ball_tracked = ball
+				ball_exist = true
+			}
+		}
+		if ball_exist {
+			flag_ball = true
+		} else {
+			flag_ball = false
+		}
+
 		var ourrobots [16]*pb_gen.TrackedRobot
 		var enemyrobots [16]*pb_gen.TrackedRobot
 
