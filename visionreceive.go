@@ -1199,8 +1199,8 @@ func TrackerReceive(chvision chan bool, port int, ourteam int, goalpos int, simm
 		// Calculate Robot Speed
 		for i := 0; i < 16; i++ {
 			if ourrobots[i] != nil {
-				robot_speed_x := bluerobots_tracked[i].Vel.GetX() * 1000
-				robot_speed_y := bluerobots_tracked[i].Vel.GetY() * 1000
+				robot_speed_x := ourrobots[i].Vel.GetX() * 1000
+				robot_speed_y := ourrobots[i].Vel.GetY() * 1000
 				robot_speed[i] = float32(math.Sqrt(float64(robot_speed_x*robot_speed_x + robot_speed_y*robot_speed_y)))
 
 				if pre_ourrobots[i] != nil {
@@ -1223,10 +1223,15 @@ func TrackerReceive(chvision chan bool, port int, ourteam int, goalpos int, simm
 					robot_intercept[i] = ourrobots[i].Pos.GetY()
 					robot_speed[i] = 0.0
 				}
+
+				robot_difference_Theta[i] = ourrobots[i].GetVelAngular()
+				robot_difference_X[i] = ourrobots[i].Vel.GetX() * 1000
+				robot_difference_Y[i] = ourrobots[i].Vel.GetY() * 1000
+
 			}
 			if enemyrobots[i] != nil {
-				enemy_speed_x := yellowrobots_tracked[i].Vel.GetX() * 1000
-				enemy_speed_y := yellowrobots_tracked[i].Vel.GetY() * 1000
+				enemy_speed_x := enemyrobots[i].Vel.GetX() * 1000
+				enemy_speed_y := enemyrobots[i].Vel.GetY() * 1000
 				enemy_speed[i] = float32(math.Sqrt(float64(enemy_speed_x*enemy_speed_x + enemy_speed_y*enemy_speed_y)))
 				if pre_enemyrobots[i] != nil {
 					enemy_difference_Theta[i] = enemyrobots[i].GetOrientation() - pre_enemyrobots[i].GetOrientation()
@@ -1247,6 +1252,10 @@ func TrackerReceive(chvision chan bool, port int, ourteam int, goalpos int, simm
 					enemy_intercept[i] = enemyrobots[i].Pos.GetY()
 					enemy_speed[i] = 0.0
 				}
+
+				enemy_difference_Theta[i] = enemyrobots[i].GetVelAngular()
+				enemy_difference_X[i] = enemyrobots[i].Vel.GetX() * 1000
+				enemy_difference_Y[i] = enemyrobots[i].Vel.GetY() * 1000
 			}
 		}
 
