@@ -1038,7 +1038,7 @@ func TrackerReceive(chvision chan bool, port int, ourteam int, goalpos int, simm
 			err = proto.Unmarshal(buf[0:n], packet)
 			CheckError(err)
 
-			log.Println(packet)
+			// log.Println(packet)
 
 			//log.Println(geometrydata)
 			var lgtlp1x, lgtlp1y, lgtlp2x float32
