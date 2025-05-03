@@ -68,13 +68,13 @@ func createRobotInfoTracked(i int, ourteam int, simmode bool) *pb_gen.Robot_Info
 	var theta float32
 	if ourteam == 0 {
 		robotid = bluerobots_tracked[i].GetRobotId().GetId()
-		x = bluerobots_tracked[i].Pos.GetX()
-		y = bluerobots_tracked[i].Pos.GetY()
+		x = bluerobots_tracked[i].Pos.GetX() * 1000
+		y = bluerobots_tracked[i].Pos.GetY() * 1000
 		theta = bluerobots_tracked[i].GetOrientation()
 	} else {
 		robotid = yellowrobots_tracked[i].GetRobotId().GetId()
-		x = yellowrobots_tracked[i].Pos.GetX()
-		y = yellowrobots_tracked[i].Pos.GetY()
+		x = yellowrobots_tracked[i].Pos.GetX() * 1000
+		y = yellowrobots_tracked[i].Pos.GetY() * 1000
 		theta = yellowrobots_tracked[i].GetOrientation()
 	}
 	var diffx float32 = robot_difference_X[i]
@@ -173,12 +173,12 @@ func createEnemyInfoTracked(i int, ourteam int) *pb_gen.Robot_Infos {
 		var difftheta float32 = enemy_difference_Theta[i]
 
 		if ourteam == 0 {
-			x = yellowrobots_tracked[i].Pos.GetX()
-			y = yellowrobots_tracked[i].Pos.GetY()
+			x = yellowrobots_tracked[i].Pos.GetX() * 1000
+			y = yellowrobots_tracked[i].Pos.GetY() * 1000
 			theta = yellowrobots_tracked[i].GetOrientation()
 		} else {
-			x = bluerobots_tracked[i].Pos.GetX()
-			y = bluerobots_tracked[i].Pos.GetY()
+			x = bluerobots_tracked[i].Pos.GetX() * 1000
+			y = bluerobots_tracked[i].Pos.GetY() * 1000
 			theta = bluerobots_tracked[i].GetOrientation()
 		}
 
