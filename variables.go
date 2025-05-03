@@ -17,7 +17,7 @@ var NW_AI_PORT_GUI string = "30013"        //DEPRECATED
 
 var NW_REF_MAX_DATAGRAM_SIZE int = 8192 * 2
 
-var NW_OUT_MCAST_IPADDR string = "224.12.3.21"
+var NW_OUT_MCAST_IPADDR string = "224.5.23.2"
 var NW_OUT_MCAST_PORT string = "30006"
 
 var MAX_AVAILABLE_TIMEOUTS int = 5

@@ -120,6 +120,7 @@ func RunServer(chserver chan bool, reportrate uint, ourteam int, goalpose int, d
 	ip_other := NW_OUT_MCAST_IPADDR
 	port_other := NW_OUT_MCAST_PORT
 	addr_other := ip_other + ":" + port_other
+	addrmc, err := net.ResolveUDPAddr("udp", addr_other)
 
 	log.Println("Send to:", addr)
 
@@ -130,7 +131,7 @@ func RunServer(chserver chan bool, reportrate uint, ourteam int, goalpose int, d
 	conn_gui, err := net.Dial("udp", addr_gui)
 	CheckError(err)
 
-	conn_other, err := net.Dial("udp", addr_other)
+	conn_other, err := net.DialUDP("udp", nil, addrmc)
 	CheckError((err))
 
 	defer conn.Close()
