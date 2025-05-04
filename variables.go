@@ -17,7 +17,7 @@ var NW_AI_PORT_GUI string = "30013"        //DEPRECATED
 
 var NW_REF_MAX_DATAGRAM_SIZE int = 8192 * 2
 
-var NW_OUT_MCAST_IPADDR string = "224.12.3.21"
+var NW_OUT_MCAST_IPADDR string = "224.5.23.2"
 var NW_OUT_MCAST_PORT string = "30006"
 
 var MAX_AVAILABLE_TIMEOUTS int = 5
@@ -27,15 +27,10 @@ var MAX_AVAILABLE_TIMEOUTS int = 5
 var is_detect_photo_sensor [16]bool
 var is_detect_dribbler_sensor [16]bool
 var is_new_dribbler [16]bool
-var visionwrapper [16]*pb_gen.SSL_WrapperPacket
-var visiondetection [16]*pb_gen.SSL_DetectionFrame
 
 var geometrydata *pb_gen.SSL_GeometryData
 var left_geo_goal_x float32
 var left_geo_goal_y float32
-
-var bluerobots [16]*pb_gen.SSL_DetectionRobot
-var yellowrobots [16]*pb_gen.SSL_DetectionRobot
 
 var bluerobots_tracked [16]*pb_gen.TrackedRobot
 var yellowrobots_tracked [16]*pb_gen.TrackedRobot
@@ -45,9 +40,6 @@ var ball *pb_gen.SSL_DetectionBall
 var ball_tracked *pb_gen.TrackedBall
 
 var maxcameras int
-
-var filtered_ball_x float32
-var filtered_ball_y float32
 
 var ball_slope_degree float32
 var ball_intercept float32
@@ -99,14 +91,6 @@ var ball_difference_X float32
 var ball_difference_Y float32
 
 var is_ball_moving bool
-
-var filtered_robot_x [16]float32
-var filtered_robot_y [16]float32
-var filtered_robot_theta [16]float32
-
-var filtered_enemy_x [16]float32
-var filtered_enemy_y [16]float32
-var filtered_enemy_theta [16]float32
 
 var robot_online [16]bool
 
