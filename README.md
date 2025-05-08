@@ -1,4 +1,6 @@
 # RACOON-MW
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/Rione/ssl-RACOON-MW)
+
 
 ## Overview
 
